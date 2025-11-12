@@ -50,7 +50,7 @@
                 </thead>
                 <tbody>
                     {% for c in clientes %}
-                    <tr>
+                    <tr data-id="{{ c[5] }}">
                         <td>{{ c[0] }}</td>
                         <td>{{ c[1] }}</td>
                         <td>{{ c[2] }}</td>
@@ -88,4 +88,149 @@
         });
     });
 </script>
+
+<!-- 🔧 MODAL PARA EDITAR CLIENTE -->
+<div id="modalEditar" class="modal">
+  <div class="modal-contenido">
+    <h2>Modificar Cliente</h2>
+    <form id="formEditar" method="POST">
+      <input type="hidden" id="idEditar">
+
+      <label>Nombre</label>
+      <input type="text" id="nombreEditar" name="nombre" placeholder="Nombre completo" required>
+
+      <label>Teléfono</label>
+      <input type="text" id="telefonoEditar" name="telefono" placeholder="Ej. 4271234567" required>
+
+      <label>Correo</label>
+      <input type="email" id="correoEditar" name="correo" placeholder="correo@ejemplo.com" required>
+
+      <label>Tipo de Cliente</label>
+      <select id="tipoEditar" name="tipo" required>
+        <option value="PRIMERIZO">Primerizo</option>
+        <option value="FRECUENTE">Frecuente</option>
+        <option value="OCASIONAL">Ocasional</option>
+      </select>
+
+      <label>Dirección</label>
+      <input type="text" id="direccionEditar" name="direccion" placeholder="Ej. Av. Juárez #97" required>
+
+      <div class="modal-botones">
+        <button type="submit" class="btn-rosa">💾 Guardar Cambios</button>
+        <button type="button" id="cancelarEditar" class="btn-borde">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const modal = document.getElementById('modalEditar');
+const formEditar = document.getElementById('formEditar');
+const cancelarBtn = document.getElementById('cancelarEditar');
+
+// Abrir modal con datos del cliente seleccionado
+document.querySelectorAll('.icono.editar').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    const fila = e.target.closest('tr');
+    const id = fila.getAttribute('data-id');
+    formEditar.action = `/modificar_cliente/${id}`;
+    const datos = fila.querySelectorAll('td');
+
+    // Llenar el formulario con los valores actuales
+    document.getElementById('idEditar').value = id;
+    document.getElementById('nombreEditar').value = datos[0].textContent.trim();
+    document.getElementById('telefonoEditar').value = datos[1].textContent.trim();
+    document.getElementById('correoEditar').value = datos[2].textContent.trim();
+    document.getElementById('tipoEditar').value = datos[3].textContent.trim();
+    document.getElementById('direccionEditar').value = datos[4].textContent.trim();
+
+    // Asignar ruta de envío
+    formEditar.action = `/modificar_cliente/${id}`;
+
+    // Mostrar modal
+    modal.style.display = 'flex';
+  });
+});
+
+// Cerrar modal al hacer clic en "Cancelar"
+cancelarBtn.addEventListener('click', () => {
+  modal.style.display = 'none';
+});
+
+// Cerrar modal si se hace clic fuera del contenido
+window.addEventListener('click', e => {
+  if (e.target === modal) {
+    modal.style.display = 'none';
+  }
+});
+</script>
+
+<style>
+/* 🔲 Fondo semitransparente */
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.45);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(3px);
+}
+
+/* 🧱 Contenedor del modal */
+.modal-contenido {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  width: 420px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  animation: aparecer 0.3s ease;
+}
+
+@keyframes aparecer {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* 🧾 Estilo de texto y etiquetas */
+.modal-contenido h2 {
+  margin-bottom: 1rem;
+  color: #FF69B4;
+  text-align: center;
+}
+
+.modal-contenido label {
+  display: block;
+  font-weight: 500;
+  margin-top: 0.8rem;
+  margin-bottom: 0.3rem;
+  color: #444;
+}
+
+.modal-contenido input,
+.modal-contenido select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  margin-bottom: 0.6rem;
+  font-size: 0.95rem;
+}
+
+/* 🎨 Botones */
+.modal-botones {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+
+.btn-rosa, .btn-borde {
+  flex: 1;
+  margin: 0 0.25rem;
+}
+</style>
+
 {% endblock %}
