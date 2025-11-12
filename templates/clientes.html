@@ -59,11 +59,16 @@
                         <td>
                             <!-- Botón Editar -->
                             <form action="{{ url_for('modificar_cliente', id=c[5]) }}" method="POST" style="display:inline;">
+                                <input type="hidden" name="nombre" value="{{ c[0] }}">
+                                <input type="hidden" name="telefono" value="{{ c[1] }}">
+                                <input type="hidden" name="correo" value="{{ c[2] }}">
+                                <input type="hidden" name="tipo" value="{{ c[3] }}">
+                                <input type="hidden" name="direccion" value="{{ c[4] }}">
                                 <button type="submit" class="icono editar" title="Editar">✏️</button>
                             </form>
                             <!-- Botón Eliminar -->
                             <form action="{{ url_for('eliminar_cliente', id=c[5]) }}" method="POST" style="display:inline;">
-                                <button type="submit" class="icono eliminar" title="Eliminar">🗑️</button>
+                                <a href="{{ url_for('eliminar_cliente', id=c[5]) }}" class="icono eliminar" title="Eliminar">🗑️</a>
                             </form>
                         </td>
                     </tr>
@@ -71,10 +76,6 @@
                 </tbody>
             </table>
 
-            <div class="acciones-clientes">
-                <button class="btn-rosa">Modificar</button>
-                <button class="btn-rosa">Eliminar</button>
-            </div>
         </div>
     </div>
 </div>

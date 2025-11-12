@@ -78,7 +78,9 @@
             </div>
 
             <!-- Validación de Armonía -->
-            <div id="validacion-armonia" class="validacion-mensaje"></div>
+            <div id="validacion-armonia" class="validacion-mensaje">
+                <button id="cerrar-validacion" style="float:right; border:none; background:none; cursor:pointer;">✖</button>
+            </div>
 
             <!-- Nombre de la combinación -->
             <label>Nombre de la combinación</label>
@@ -476,14 +478,14 @@ function updatePreview() {
     const asaIzq = document.getElementById('asa-izq');
     const asaDer = document.getElementById('asa-der');
     
+    const rectSuperior = document.getElementById('rect-superior');
+    if (rectSuperior && tipo !== 'combinado') rectSuperior.remove();
+    
     if (tipo === 'simple') {
         const color1 = document.getElementById('color-1')?.value || '#CCCCCC';
-        
-        // Cuerpo completo de un color
         cuerpo.setAttribute('fill', color1);
+        cuerpo.setAttribute('y', '75');  // restaurar posición original
         cuerpo.setAttribute('height', '400');
-        
-        // Calcular color de asa óptimo
         const colorAsa = getOptimalHandleColor(color1);
         asaIzq.setAttribute('stroke', colorAsa);
         asaDer.setAttribute('stroke', colorAsa);
@@ -766,11 +768,18 @@ document.getElementById('exportSVG').addEventListener('click', () => {
     }
 });
 
+document.getElementById('cerrar-validacion').addEventListener('click', () => {
+    const msgDiv = document.getElementById('validacion-armonia');
+    msgDiv.style.display = 'none';
+});
+
 // Manejar envío del formulario
 document.getElementById('form-diseno').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    const tipo = document.getElementById('modelo_bolsa').value;
+    const select = document.getElementById('modelo_bolsa');
+    const id_modelo = select.value;
+    const tipo = select.options[select.selectedIndex].dataset.tipo;
     const esquema = document.getElementById('esquema_color').value;
     const nombre = document.getElementById('nombre_combinacion').value;
     
@@ -782,7 +791,7 @@ document.getElementById('form-diseno').addEventListener('submit', function(e) {
     // Crear FormData con los datos del formulario
     const formData = new FormData();
     formData.append('esquema_color', esquema);
-    formData.append('modelo_bolsa', tipo);
+    formData.append('modelo_bolsa', id_modelo);
     formData.append('nombre_combinacion', nombre);
     
     // Agregar colores según el tipo
@@ -805,7 +814,7 @@ document.getElementById('form-diseno').addEventListener('submit', function(e) {
     } else if (tipo === 'especial') {
         // Guardar elementos especiales como JSON
         if (elementosEspeciales.length > 0) {
-            formData.append('elementos_json', JSON.stringify(elementosEspeciales));
+            formData.append('diseno_json', JSON.stringify(elementosEspeciales)); // ✅ nombre correcto
         }
         formData.append('color_asa', '#000000');
     }

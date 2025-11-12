@@ -50,16 +50,20 @@ def agregar_cliente():
     return redirect(url_for('clientes'))
 
 # Eliminar cliente
-@app.route('/eliminar_cliente/<int:id>', methods=['POST'])
+@app.route('/eliminar_cliente/<int:id>', methods=['GET', 'POST'])
 def eliminar_cliente(id):
     conn = get_connection()
     if conn:
         cur = conn.cursor()
-        cur.execute("DELETE FROM clientes WHERE id_cliente = ?;", (id,))
-        conn.commit()
+        try:
+            cur.execute("DELETE FROM clientes WHERE id_cliente = ?;", (id,))
+            conn.commit()
+        except Exception as e:
+            print(f"Error al eliminar cliente: {e}")
         cur.close()
         conn.close()
     return redirect(url_for('clientes'))
+
 
 # Modificar cliente
 @app.route('/modificar_cliente/<int:id>', methods=['POST'])
