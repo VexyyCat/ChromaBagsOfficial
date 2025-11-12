@@ -1,0 +1,310 @@
+/* Estilo general */
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #fefefe;
+}
+
+/* Layout principal */
+.layout {
+    display: flex;
+    height: 100vh;
+}
+
+/* --- Sidebar --- */
+.sidebar {
+    background-color: #fff;
+    border-right: 1px solid #ddd;
+    width: 220px;
+    padding: 20px;
+}
+
+.logo {
+    color: #4a148c;
+    font-size: 20px;
+    margin-bottom: 30px;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+}
+
+.sidebar ul li {
+    margin: 15px 0;
+}
+
+.sidebar ul li a {
+    text-decoration: none;
+    color: #111;
+    font-weight: 500;
+    padding: 6px 10px;
+    display: block;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.sidebar ul li a:hover,
+.sidebar ul li a.activo {
+    background-color: #f8bbd0;
+    color: #6a1b9a;
+}
+
+/* --- Contenido --- */
+.contenido {
+    flex: 1;
+    padding: 20px 40px;
+    background-color: #fafafa;
+    overflow-y: auto;
+}
+
+/* --- Encabezado --- */
+.encabezado {
+    text-align: right;
+    font-size: 14px;
+    color: #777;
+    margin-bottom: 20px;
+}
+
+/* --- Panel de clientes --- */
+.clientes-panel h1 {
+    color: #4a148c;
+    margin-bottom: 20px;
+}
+
+.clientes-container {
+    display: flex;
+    gap: 25px;
+}
+
+/* --- Formulario --- */
+.formulario-clientes {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #f8bbd0;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.formulario-clientes label {
+    display: block;
+    margin-top: 10px;
+    font-weight: 600;
+}
+
+.formulario-clientes input,
+.formulario-clientes select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    margin-top: 4px;
+}
+
+.btn-rosa {
+    background-color: #e91e63;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    color: #fff;
+    margin-top: 15px;
+    cursor: pointer;
+}
+
+.btn-rosa:hover {
+    background-color: #d81b60;
+}
+
+/* --- Lista de clientes --- */
+.lista-clientes {
+    flex: 2;
+    background: #fff;
+    border: 1px solid #f8bbd0;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.header-lista {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.lista-clientes table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.lista-clientes th, .lista-clientes td {
+    border: 1px solid #f8bbd0;
+    padding: 8px;
+    text-align: left;
+}
+
+.lista-clientes th {
+    background-color: #fce4ec;
+}
+
+.icono {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    margin: 0 5px;
+}
+
+.acciones-clientes {
+    text-align: center;
+    margin-top: 15px;
+}
+/* --- Panel general --- */
+.panel-general h1 {
+    color: #4a148c;
+    margin-bottom: 20px;
+}
+
+/* --- Formularios generales --- */
+textarea {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+/* --- Catálogo visual --- */
+.grid-catalogo {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 20px;
+}
+
+.tarjeta {
+    background: #fff;
+    border: 1px solid #f8bbd0;
+    border-radius: 15px;
+    padding: 15px;
+    text-align: center;
+    transition: 0.3s;
+}
+
+.tarjeta:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+.tarjeta h3 {
+    color: #6a1b9a;
+}
+
+.tarjeta p {
+    font-size: 14px;
+    color: #444;
+}
+
+.grid-catalogo .btn-rosa {
+    margin-top: 10px;
+}
+/* === DISEÑO Y COLOR === */
+.contenedor-diseno {
+    display: flex;
+    justify-content: space-between;
+    background-color: #fff;
+    border-radius: 15px;
+    padding: 25px;
+    margin: 10px 40px;
+}
+
+.panel-izquierdo {
+    width: 45%;
+    background: #fff;
+    padding: 20px;
+}
+
+.panel-izquierdo h2 {
+    color: #4b0082;
+    margin-bottom: 15px;
+}
+
+.panel-izquierdo label {
+    display: block;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+.panel-izquierdo select,
+.panel-izquierdo input[type="text"] {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+.paleta-dinamica {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.color-box {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.color-box:hover {
+    transform: scale(1.1);
+}
+
+.botones {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-rosa {
+    background-color: #f48fb1;
+    border: none;
+    padding: 8px 16px;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-borde {
+    background-color: white;
+    border: 2px solid #f48fb1;
+    color: #f48fb1;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.panel-derecho {
+    width: 45%;
+    text-align: center;
+}
+
+.preview {
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.preview-box {
+    width: 250px;
+    height: 120px;
+    background-color: #f48fb1;
+    margin: 0 auto 10px auto;
+    border-radius: 8px;
+}
+
+.botones-exportar {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}

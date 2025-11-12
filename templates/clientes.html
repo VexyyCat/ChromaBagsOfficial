@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="clientes-panel">
+    <h1>Registro de Clientes</h1>
+
+    <div class="clientes-container">
+        <!-- Formulario -->
+        <form action="{{ url_for('agregar_cliente') }}" method="POST" class="formulario-clientes">
+            <h3>Formulario de registro</h3>
+
+            <label>Nombre</label>
+            <input type="text" name="nombre" placeholder="Nombre completo" required>
+
+            <label>Teléfono</label>
+            <input type="text" name="telefono" placeholder="Ej. 4271234567" required>
+
+            <label>Email</label>
+            <input type="email" name="correo" placeholder="correo@ejemplo.com" required>
+
+            <label>Tipo de Cliente</label>
+            <select name="tipo" required>
+                <option value="PRIMERIZO">Primerizo</option>
+                <option value="FRECUENTE">Frecuente</option>
+                <option value="OCASIONAL">Ocasional</option>
+            </select>
+
+            <label>Dirección</label>
+            <input type="text" name="direccion" placeholder="Ej. Av. Juárez #97" required>
+
+            <button type="submit" class="btn-rosa">Registrar</button>
+        </form>
+
+        <!-- Lista -->
+        <div class="lista-clientes">
+            <div class="header-lista">
+                <h3>Lista de clientes</h3>
+                <button class="btn-rosa">+ Nuevo Cliente</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Teléfono</th>
+                        <th>Correo</th>
+                        <th>Tipo cliente</th>
+                        <th>Dirección</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in clientes %}
+                    <tr>
+                        <td>{{ c[0] }}</td>
+                        <td>{{ c[1] }}</td>
+                        <td>{{ c[2] }}</td>
+                        <td>{{ c[3] }}</td>
+                        <td>{{ c[4] }}</td>
+                        <td>
+                            <!-- Botón Editar -->
+                            <form action="{{ url_for('modificar_cliente', id=c[5]) }}" method="POST" style="display:inline;">
+                                <button type="submit" class="icono editar" title="Editar">✏️</button>
+                            </form>
+                            <!-- Botón Eliminar -->
+                            <form action="{{ url_for('eliminar_cliente', id=c[5]) }}" method="POST" style="display:inline;">
+                                <button type="submit" class="icono eliminar" title="Eliminar">🗑️</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="acciones-clientes">
+                <button class="btn-rosa">Modificar</button>
+                <button class="btn-rosa">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Convertir campos a mayúsculas automáticamente
+    document.querySelectorAll('input[name="nombre"], input[name="direccion"]').forEach(campo => {
+        campo.addEventListener('input', () => {
+            campo.value = campo.value.toUpperCase();
+        });
+    });
+</script>
+{% endblock %}

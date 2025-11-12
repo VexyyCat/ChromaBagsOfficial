@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>ChromaBags</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="layout">
+        <!-- Barra lateral -->
+        <aside class="sidebar">
+            <h2 class="logo">CHROMABAGS</h2>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('diseno_color') }}" class="{% if request.path == '/diseno_color' %}activo{% endif %}">Diseño & colores</a></li>
+                    <li><a href="{{ url_for('catalogo') }}" class="{% if request.path == '/catalogo' %}activo{% endif %}">Catálogo</a></li>
+                    <li><a href="#" class="">Inventario</a></li>
+                    <li><a href="{{ url_for('clientes') }}" class="{% if request.path == '/clientes' %}activo{% endif %}">Clientes</a></li>
+                    <li><a href="#">Cotización</a></li>
+                    <li><a href="#">Reportes</a></li>
+                    <li><a href="#">Respaldo</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Contenido principal -->
+        <main class="contenido">
+            <header class="encabezado">
+                <span>usuario:administrador</span>
+            </header>
+
+            <section class="main-section">
+                {% block content %}{% endblock %}
+            </section>
+        </main>
+    </div>
+</body>
+</html>

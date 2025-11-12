@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel-general">
+    <h1>Catálogo de Diseños</h1>
+
+    <div class="grid-catalogo">
+        {% for c in combinaciones %}
+        <div class="tarjeta">
+            <!-- Previsualización de la bolsa -->
+            <div class="preview-producto">
+                <svg class="bolsa-miniatura" width="150" height="200" viewBox="0 0 300 400">
+                    {% if c[5] == 'simple' %}
+                        <!-- Modelo Simple -->
+                        <rect x="0" y="0" width="300" height="400" fill="{{ c[6] or '#CCCCCC' }}" stroke="#333" stroke-width="2"/>
+                        <rect x="98" y="8" width="14" height="90" rx="7" ry="7" fill="{{ c[7] or '#000000' }}"/>
+                        <rect x="188" y="8" width="14" height="90" rx="7" ry="7" fill="{{ c[7] or '#000000' }}"/>
+                    
+                    {% elif c[5] == 'combinado' %}
+                        <!-- Modelo Combinado -->
+                        <rect x="0" y="0" width="300" height="100" fill="{{ c[8] or '#FFB6C1' }}" stroke="#333" stroke-width="2"/>
+                        <rect x="0" y="100" width="300" height="300" fill="{{ c[6] or '#FF69B4' }}" stroke="#333" stroke-width="2"/>
+                        <rect x="98" y="8" width="14" height="90" rx="7" ry="7" fill="{{ c[7] or '#000000' }}"/>
+                        <rect x="188" y="8" width="14" height="90" rx="7" ry="7" fill="{{ c[7] or '#000000' }}"/>
+                    
+                    {% else %}
+                        <!-- Modelo Especial -->
+                        <rect x="0" y="0" width="300" height="400" fill="#F5F5F5" stroke="#333" stroke-width="2"/>
+                        <text x="150" y="200" text-anchor="middle" font-size="24" fill="#666">Especial</text>
+                        <rect x="98" y="8" width="14" height="90" rx="7" ry="7" fill="#000000"/>
+                        <rect x="188" y="8" width="14" height="90" rx="7" ry="7" fill="#000000"/>
+                    {% endif %}
+                </svg>
+            </div>
+
+            <div class="info">
+                <h3>{{ c[1] }}</h3>
+                <p><strong>Modelo:</strong> {{ c[4] }} ({{ c[5] }})</p>
+                <p><strong>Esquema:</strong> {{ c[2] }}</p>
+                <p><strong>Fecha:</strong> {{ c[3] }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not combinaciones %}
+    <div class="mensaje-vacio">
+        <p>No hay diseños guardados aún.</p>
+        <p>Crea diseños en la sección de <a href="{{ url_for('diseno_color') }}">Diseño & Colores</a></p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.panel-general {
+    padding: 2rem;
+}
+
+.panel-general h1 {
+    color: #333;
+    margin-bottom: 2rem;
+    font-size: 2rem;
+}
+
+.grid-catalogo {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+.tarjeta {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.tarjeta:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.preview-producto {
+    background: #fafafa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 220px;
+}
+
+.bolsa-miniatura {
+    max-width: 100%;
+    height: auto;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.info {
+    margin-bottom: 1rem;
+}
+
+.info h3 {
+    color: #FF69B4;
+    margin-bottom: 0.75rem;
+    font-size: 1.3rem;
+}
+
+.info p {
+    margin: 0.5rem 0;
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.info p strong {
+    color: #333;
+}
+
+.mensaje-vacio {
+    text-align: center;
+    padding: 3rem;
+    background: white;
+    border-radius: 12px;
+    margin-top: 2rem;
+}
+
+.mensaje-vacio p {
+    font-size: 1.1rem;
+    color: #666;
+    margin: 1rem 0;
+}
+
+.mensaje-vacio a {
+    color: #FF69B4;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.mensaje-vacio a:hover {
+    text-decoration: underline;
+}
+</style>
+
+{% endblock %}

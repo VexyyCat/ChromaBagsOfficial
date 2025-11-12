@@ -1,0 +1,836 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="contenedor-diseno">
+    <!-- Panel Izquierdo: Controles -->
+    <div class="panel-izquierdo">
+        <h2>Diseño & Colores</h2>
+
+        <form id="form-diseno">
+            <!-- Tipo de Modelo -->
+            <label>Modelo de bolsa</label>
+            <select name="modelo_bolsa" id="modelo_bolsa" required>
+                {% for m in modelos %}
+            <option value="{{ m[0] }}" data-tipo="{{ m[2] }}" data-nombre="{{ m[1] }}">
+                {{ m[1] }} - {{ m[2] }}
+            </option>
+                {% endfor %}
+            </select>
+
+            <div id="descripcion-modelo" class="descripcion-modelo">
+                <p><strong>Simple:</strong> Un solo color + asas blancas o negras</p>
+            </div>
+
+            <!-- Esquema de Color -->
+            <label>Esquema de color</label>
+            <select name="esquema_color" id="esquema_color" required>
+                <option value="armonico">Armónicos (flexible)</option>
+                <option value="complementario">Complementarios (opuestos)</option>
+                <option value="analogo">Análogos (similares)</option>
+            </select>
+
+            <!-- Selector de Colores según tipo -->
+            <div id="selectores-color">
+                <!-- Se generan dinámicamente -->
+            </div>
+
+            <!-- Herramientas para modelo Especial -->
+            <div id="herramientas-especial" style="display: none;">
+                <h3>Herramientas de Diseño</h3>
+                <div class="herramientas-grid">
+                    <button type="button" class="btn-herramienta" data-tool="rectangulo">
+                        <span>▭</span> Rectángulo
+                    </button>
+                    <button type="button" class="btn-herramienta" data-tool="circulo">
+                        <span>●</span> Círculo
+                    </button>
+                    <button type="button" class="btn-herramienta" data-tool="asa">
+                        <span>⌢</span> Asa
+                    </button>
+                    <button type="button" class="btn-herramienta" data-tool="limpiar">
+                        <span>🗑</span> Limpiar
+                    </button>
+                </div>
+
+                <div id="propiedades-elemento" style="display: none;">
+                    <h4>Propiedades del Elemento</h4>
+                    <label>Color</label>
+                    <input type="color" id="color-elemento" value="#FF69B4">
+                    
+                    <label>Ancho (%)</label>
+                    <input type="range" id="ancho-elemento" min="10" max="100" value="50">
+                    <span id="ancho-valor">50%</span>
+                    
+                    <label>Alto (%)</label>
+                    <input type="range" id="alto-elemento" min="10" max="100" value="30">
+                    <span id="alto-valor">30%</span>
+                    
+                    <label>Posición X (%)</label>
+                    <input type="range" id="x-elemento" min="0" max="90" value="25">
+                    <span id="x-valor">25%</span>
+                    
+                    <label>Posición Y (%)</label>
+                    <input type="range" id="y-elemento" min="0" max="90" value="25">
+                    <span id="y-valor">25%</span>
+                    
+                    <button type="button" id="aplicar-elemento" class="btn-rosa">Agregar Elemento</button>
+                </div>
+            </div>
+
+            <!-- Validación de Armonía -->
+            <div id="validacion-armonia" class="validacion-mensaje"></div>
+
+            <!-- Nombre de la combinación -->
+            <label>Nombre de la combinación</label>
+            <input type="text" name="nombre_combinacion" id="nombre_combinacion" 
+                   placeholder="Ej. Rosa intenso con verde" required>
+
+            <div class="botones">
+                <button type="submit" class="btn-borde">Guardar Combinación</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Panel Derecho: Preview -->
+    <div class="panel-derecho">
+        <h3>Previsualización</h3>
+        <div class="preview">
+            <div id="previewCanvas" class="preview-canvas">
+                <svg id="bolsaSVG" width="300" height="400" viewBox="0 0 300 400">
+                    <!-- Cuerpo de la bolsa -->
+                    <rect id="cuerpo-bolsa" x="0" y="75" width="300" height="400" fill="#CCCCCC" stroke="#333" stroke-width="2"/>
+                    
+                    <!-- Asas (rectángulos verticales en la parte superior) -->
+                    <rect id="asa-izq" x="98" y="8" width="14" height="90" rx="7" ry="7" fill="#000000" stroke="#000000" stroke-width="1"/>
+                    <rect id="asa-der" x="188" y="8" width="14" height="90" rx="7" ry="7" fill="#000000" stroke="#000000" stroke-width="1"/>
+                    
+                    <!-- Contenedor para elementos especiales -->
+                    <g id="elementos-especiales"></g>
+                </svg>
+            </div>
+            <p id="modeloNombre" class="modelo-nombre">Simple</p>
+        </div>
+
+        <div class="botones-exportar">
+            <button id="exportPNG" class="btn-rosa">Exportar PNG</button>
+            <button id="exportJPG" class="btn-rosa">Exportar JPG</button>
+            <button id="exportSVG" class="btn-borde">Exportar SVG</button>
+        </div>
+
+        <!-- Selector de Color RGB (OCULTO) -->
+        <div class="paleta-rgb" style="display: none;">
+            <h4>Selector de Color RGB</h4>
+            <div class="rgb-controls">
+                <div class="color-preview" id="color-preview"></div>
+                <div class="sliders">
+                    <div>
+                        <label>R: <span id="r-value">255</span></label>
+                        <input type="range" id="r-slider" min="0" max="255" value="255">
+                    </div>
+                    <div>
+                        <label>G: <span id="g-value">105</span></label>
+                        <input type="range" id="g-slider" min="0" max="255" value="105">
+                    </div>
+                    <div>
+                        <label>B: <span id="b-value">180</span></label>
+                        <input type="range" id="b-slider" min="0" max="255" value="180">
+                    </div>
+                </div>
+                <input type="text" id="hex-input" value="#FF69B4" readonly>
+                <button type="button" id="agregar-color-rgb" class="btn-rosa">
+                    Usar este color
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.contenedor-diseno {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    padding: 2rem;
+}
+
+.panel-izquierdo, .panel-derecho {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.descripcion-modelo {
+    background: #f0f0f0;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+}
+
+.selectores-color {
+    margin: 1.5rem 0;
+}
+
+.color-input-group {
+    margin: 1rem 0;
+}
+
+.color-input-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.color-input-wrapper {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.color-input-wrapper input[type="color"] {
+    width: 60px;
+    height: 40px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.color-input-wrapper input[type="text"] {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.herramientas-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.btn-herramienta {
+    padding: 1rem;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+}
+
+.btn-herramienta:hover {
+    border-color: #FF69B4;
+    background: #FFF0F5;
+}
+
+.btn-herramienta.active {
+    border-color: #FF69B4;
+    background: #FF69B4;
+    color: white;
+}
+
+.btn-herramienta span {
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+#propiedades-elemento {
+    background: #f9f9f9;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+#propiedades-elemento label {
+    display: block;
+    margin-top: 0.8rem;
+    margin-bottom: 0.3rem;
+    font-size: 0.9rem;
+}
+
+#propiedades-elemento input[type="range"] {
+    width: calc(100% - 60px);
+}
+
+#propiedades-elemento span {
+    display: inline-block;
+    width: 50px;
+    text-align: right;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.preview {
+    background: #fafafa;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+}
+
+.preview-canvas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+#bolsaSVG {
+    max-width: 100%;
+    height: auto;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.modelo-nombre {
+    text-align: center;
+    margin-top: 1rem;
+    font-weight: 600;
+    color: #666;
+}
+
+.botones-exportar {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.validacion-mensaje {
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+    display: none;
+}
+
+.validacion-mensaje.error {
+    background: #fee;
+    border-left: 4px solid #f44;
+    color: #c00;
+    display: block;
+}
+
+.validacion-mensaje.warning {
+    background: #ffc;
+    border-left: 4px solid #fa0;
+    color: #860;
+    display: block;
+}
+
+.validacion-mensaje.success {
+    background: #efe;
+    border-left: 4px solid #4a4;
+    color: #060;
+    display: block;
+}
+
+.btn-rosa, .btn-borde {
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-rosa {
+    background: #FF69B4;
+    color: white;
+    border: none;
+}
+
+.btn-rosa:hover {
+    background: #FF1493;
+}
+
+.btn-borde {
+    background: white;
+    color: #FF69B4;
+    border: 2px solid #FF69B4;
+}
+
+.btn-borde:hover {
+    background: #FFF0F5;
+}
+
+.botones {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+select, input[type="text"] {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+let currentDesign = null;
+let currentTool = null;
+let elementosEspeciales = [];
+
+// Descripción de modelos
+const modeloDescripciones = {
+    'simple': '<p><strong>Simple:</strong> Un solo color + asas blancas o negras</p>',
+    'combinado': '<p><strong>Combinado:</strong> 1/4 superior de un color, resto de otro color</p>',
+    'especial': '<p><strong>Especial:</strong> Diseño personalizado con herramientas de dibujo</p>'
+};
+
+// Cambio de modelo
+document.getElementById('modelo_bolsa').addEventListener('change', function() {
+    const tipo = this.options[this.selectedIndex].dataset.tipo;
+    const nombre = this.options[this.selectedIndex].dataset.nombre;
+    
+    document.getElementById('descripcion-modelo').innerHTML = modeloDescripciones[tipo] || '';
+    document.getElementById('modeloNombre').textContent = nombre;
+    
+    // Actualizar selectores de color
+    updateColorSelectors(tipo);
+    
+    // Mostrar/ocultar herramientas especiales
+    document.getElementById('herramientas-especial').style.display = 
+        tipo === 'especial' ? 'block' : 'none';
+    
+    // Limpiar elementos especiales
+    elementosEspeciales = [];
+    document.getElementById('elementos-especiales').innerHTML = '';
+    
+    // Actualizar vista
+    updatePreview();
+});
+
+function updateColorSelectors(tipo) {
+    const container = document.getElementById('selectores-color');
+    container.innerHTML = '';
+    
+    if (tipo === 'simple') {
+        container.innerHTML = `
+            <div class="color-input-group">
+                <label>Color Principal</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="color-1" value="#FF69B4">
+                    <input type="text" id="color-1-hex" value="#FF69B4" readonly>
+                </div>
+            </div>
+        `;
+    } else if (tipo === 'combinado') {
+        container.innerHTML = `
+            <div class="color-input-group">
+                <label>Color Principal (3/4 inferior)</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="color-1" value="#FF69B4">
+                    <input type="text" id="color-1-hex" value="#FF69B4" readonly>
+                </div>
+            </div>
+            <div class="color-input-group">
+                <label>Color Secundario (1/4 superior)</label>
+                <div class="color-input-wrapper">
+                    <input type="color" id="color-2" value="#FFB6C1">
+                    <input type="text" id="color-2-hex" value="#FFB6C1" readonly>
+                </div>
+            </div>
+        `;
+    } else if (tipo === 'especial') {
+        container.innerHTML = `
+            <p style="font-size: 0.9rem; color: #666;">Usa las herramientas de diseño para crear elementos personalizados</p>
+        `;
+    }
+    
+    // Agregar listeners a los inputs de color
+    setupColorInputs();
+    
+    // Actualizar preview inicial
+    updatePreview();
+}
+
+function setupColorInputs() {
+    document.querySelectorAll('input[type="color"]').forEach(input => {
+        input.addEventListener('input', function() {
+            const hexInput = document.getElementById(this.id + '-hex');
+            if (hexInput) {
+                hexInput.value = this.value.toUpperCase();
+            }
+            updatePreview(); // Actualización en tiempo real
+            validateColors();
+        });
+    });
+}
+
+// Actualizar vista previa
+function updatePreview() {
+    const select = document.getElementById('modelo_bolsa');
+    const tipo = select.options[select.selectedIndex].dataset.tipo;
+    const cuerpo = document.getElementById('cuerpo-bolsa');
+    const asaIzq = document.getElementById('asa-izq');
+    const asaDer = document.getElementById('asa-der');
+    
+    if (tipo === 'simple') {
+        const color1 = document.getElementById('color-1')?.value || '#CCCCCC';
+        
+        // Cuerpo completo de un color
+        cuerpo.setAttribute('fill', color1);
+        cuerpo.setAttribute('height', '400');
+        
+        // Calcular color de asa óptimo
+        const colorAsa = getOptimalHandleColor(color1);
+        asaIzq.setAttribute('stroke', colorAsa);
+        asaDer.setAttribute('stroke', colorAsa);
+        
+    } else if (tipo === 'combinado') {
+        const color1 = document.getElementById('color-1')?.value || '#FF69B4';
+        const color2 = document.getElementById('color-2')?.value || '#FFB6C1';
+        
+        // Crear dos rectángulos (1/4 y 3/4)
+        const svg = document.getElementById('bolsaSVG');
+        const cuartoAltura = 100; // 1/4 de 400
+        
+        // Limpiar y recrear
+        cuerpo.setAttribute('fill', color1);
+        cuerpo.setAttribute('y', cuartoAltura);
+        cuerpo.setAttribute('height', 300); // 3/4
+        
+        // Crear rectángulo superior si no existe
+        let rectSuperior = document.getElementById('rect-superior');
+        if (!rectSuperior) {
+            rectSuperior = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rectSuperior.setAttribute('id', 'rect-superior');
+            rectSuperior.setAttribute('stroke', '#333');
+            rectSuperior.setAttribute('stroke-width', '2');
+            svg.insertBefore(rectSuperior, cuerpo);
+        }
+        
+        rectSuperior.setAttribute('x', '0');
+        rectSuperior.setAttribute('y', '0');
+        rectSuperior.setAttribute('width', '300');
+        rectSuperior.setAttribute('height', cuartoAltura);
+        rectSuperior.setAttribute('fill', color2);
+        
+        // Calcular color de asa óptimo con ambos colores
+        const colorAsa = getOptimalHandleColor(color1, color2);
+        asaIzq.setAttribute('stroke', colorAsa);
+        asaDer.setAttribute('stroke', colorAsa);
+        
+    } else if (tipo === 'especial') {
+        // Fondo base gris
+        cuerpo.setAttribute('fill', '#F5F5F5');
+        cuerpo.setAttribute('y', '0');
+        cuerpo.setAttribute('height', '400');
+        
+        // Las asas se pueden personalizar
+        asaIzq.setAttribute('stroke', '#000000');
+        asaDer.setAttribute('stroke', '#000000');
+        
+        // Renderizar elementos especiales
+        renderElementosEspeciales();
+    }
+}
+
+// Calcular color óptimo para asas (blanco o negro según contraste)
+function getOptimalHandleColor(...colores) {
+    // Calcular luminancia promedio
+    let lumTotal = 0;
+    colores.forEach(color => {
+        const rgb = hexToRgb(color);
+        const lum = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+        lumTotal += lum;
+    });
+    
+    const lumPromedio = lumTotal / colores.length;
+    
+    // Si es claro, usar negro; si es oscuro, usar blanco
+    return lumPromedio > 0.5 ? '#000000' : '#FFFFFF';
+}
+
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : {r: 0, g: 0, b: 0};
+}
+
+// Herramientas para modelo especial
+document.querySelectorAll('.btn-herramienta').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const tool = this.dataset.tool;
+        
+        if (tool === 'limpiar') {
+            elementosEspeciales = [];
+            document.getElementById('elementos-especiales').innerHTML = '';
+            return;
+        }
+        
+        // Activar herramienta
+        document.querySelectorAll('.btn-herramienta').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentTool = tool;
+        
+        // Mostrar propiedades
+        document.getElementById('propiedades-elemento').style.display = 'block';
+    });
+});
+
+// Actualizar valores de sliders
+['ancho', 'alto', 'x', 'y'].forEach(prop => {
+    const slider = document.getElementById(`${prop}-elemento`);
+    const valor = document.getElementById(`${prop}-valor`);
+    if (slider && valor) {
+        slider.addEventListener('input', function() {
+            valor.textContent = this.value + '%';
+        });
+    }
+});
+
+// Aplicar elemento
+document.getElementById('aplicar-elemento')?.addEventListener('click', function() {
+    if (!currentTool) return;
+    
+    const color = document.getElementById('color-elemento').value;
+    const ancho = parseInt(document.getElementById('ancho-elemento').value);
+    const alto = parseInt(document.getElementById('alto-elemento').value);
+    const x = parseInt(document.getElementById('x-elemento').value);
+    const y = parseInt(document.getElementById('y-elemento').value);
+    
+    const elemento = {
+        tipo: currentTool,
+        color: color,
+        ancho: ancho,
+        alto: alto,
+        x: x,
+        y: y
+    };
+    
+    elementosEspeciales.push(elemento);
+    renderElementosEspeciales();
+});
+
+function renderElementosEspeciales() {
+    const container = document.getElementById('elementos-especiales');
+    container.innerHTML = '';
+    
+    elementosEspeciales.forEach(elem => {
+        const anchoReal = (elem.ancho / 100) * 300;
+        const altoReal = (elem.alto / 100) * 400;
+        const xReal = (elem.x / 100) * 300;
+        const yReal = (elem.y / 100) * 400;
+        
+        if (elem.tipo === 'rectangulo') {
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', xReal);
+            rect.setAttribute('y', yReal);
+            rect.setAttribute('width', anchoReal);
+            rect.setAttribute('height', altoReal);
+            rect.setAttribute('fill', elem.color);
+            rect.setAttribute('stroke', '#333');
+            rect.setAttribute('stroke-width', '1');
+            container.appendChild(rect);
+            
+        } else if (elem.tipo === 'circulo') {
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            const radio = Math.min(anchoReal, altoReal) / 2;
+            circle.setAttribute('cx', xReal + anchoReal / 2);
+            circle.setAttribute('cy', yReal + altoReal / 2);
+            circle.setAttribute('r', radio);
+            circle.setAttribute('fill', elem.color);
+            circle.setAttribute('stroke', '#333');
+            circle.setAttribute('stroke-width', '1');
+            container.appendChild(circle);
+            
+        } else if (elem.tipo === 'asa') {
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const d = `M ${xReal},${yReal} Q ${xReal + anchoReal/2},${yReal - 30} ${xReal + anchoReal},${yReal}`;
+            path.setAttribute('d', d);
+            path.setAttribute('stroke', elem.color);
+            path.setAttribute('stroke-width', '8');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-linecap', 'round');
+            container.appendChild(path);
+        }
+    });
+}
+// Permitir arrastrar elementos en la previsualización
+let selectedElement = null;
+let offset = { x: 0, y: 0 };
+
+document.getElementById('bolsaSVG').addEventListener('mousedown', function (e) {
+    if (e.target.closest('#elementos-especiales') && e.target.tagName !== 'g') {
+        selectedElement = e.target;
+        const rect = e.target.getBoundingClientRect();
+        offset.x = e.clientX - rect.left;
+        offset.y = e.clientY - rect.top;
+    }
+});
+
+document.addEventListener('mousemove', function (e) {
+    if (!selectedElement) return;
+
+    const svg = document.getElementById('bolsaSVG');
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+
+    if (selectedElement.tagName === 'rect') {
+        selectedElement.setAttribute('x', svgP.x - offset.x);
+        selectedElement.setAttribute('y', svgP.y - offset.y);
+    } else if (selectedElement.tagName === 'circle') {
+        selectedElement.setAttribute('cx', svgP.x);
+        selectedElement.setAttribute('cy', svgP.y);
+    } else if (selectedElement.tagName === 'path') {
+        // No se arrastran curvas (asas) por simplicidad
+    }
+});
+
+document.addEventListener('mouseup', function () {
+    selectedElement = null;
+});
+
+// Validar colores según esquema
+async function validateColors() {
+    const esquema = document.getElementById('esquema_color').value;
+    const colores = [];
+    
+    document.querySelectorAll('input[type="color"]').forEach(input => {
+        colores.push(input.value);
+    });
+    
+    if (colores.length < 2) return;
+    
+    try {
+        const response = await fetch('/api/validar_armonia', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({colores, esquema})
+        });
+        
+        const data = await response.json();
+        const msgDiv = document.getElementById('validacion-armonia');
+        
+        if (data.valido) {
+            msgDiv.className = 'validacion-mensaje success';
+            msgDiv.textContent = '✓ Los colores cumplen con el esquema de armonía';
+        } else {
+            msgDiv.className = 'validacion-mensaje warning';
+            msgDiv.textContent = '⚠ Los colores no cumplen perfectamente con el esquema';
+        }
+    } catch (error) {
+        console.error('Error validando colores:', error);
+    }
+}
+
+// Exportar PNG
+document.getElementById('exportPNG').addEventListener('click', () => {
+    html2canvas(document.querySelector('.preview-canvas')).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'diseno_bolsa.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+});
+
+// Exportar JPG
+document.getElementById('exportJPG').addEventListener('click', () => {
+    html2canvas(document.querySelector('.preview-canvas')).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'diseno_bolsa.jpg';
+        link.href = canvas.toDataURL('image/jpeg');
+        link.click();
+    });
+});
+
+// Exportar SVG
+document.getElementById('exportSVG').addEventListener('click', () => {
+    const svg = document.querySelector('#bolsaSVG');
+    if (svg) {
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const blob = new Blob([svgData], {type: 'image/svg+xml'});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = 'diseno_bolsa.svg';
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+});
+
+// Manejar envío del formulario
+document.getElementById('form-diseno').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const tipo = document.getElementById('modelo_bolsa').value;
+    const esquema = document.getElementById('esquema_color').value;
+    const nombre = document.getElementById('nombre_combinacion').value;
+    
+    if (!nombre.trim()) {
+        alert('Por favor ingresa un nombre para la combinación');
+        return;
+    }
+    
+    // Crear FormData con los datos del formulario
+    const formData = new FormData();
+    formData.append('esquema_color', esquema);
+    formData.append('modelo_bolsa', tipo);
+    formData.append('nombre_combinacion', nombre);
+    
+    // Agregar colores según el tipo
+    if (tipo === 'simple') {
+        const color1 = document.getElementById('color-1')?.value;
+        if (color1) {
+            formData.append('color_principal', color1);
+            const colorAsa = getOptimalHandleColor(color1);
+            formData.append('color_asa', colorAsa);
+        }
+    } else if (tipo === 'combinado') {
+        const color1 = document.getElementById('color-1')?.value;
+        const color2 = document.getElementById('color-2')?.value;
+        if (color1) formData.append('color_principal', color1);
+        if (color2) formData.append('color_secundario', color2);
+        if (color1 && color2) {
+            const colorAsa = getOptimalHandleColor(color1, color2);
+            formData.append('color_asa', colorAsa);
+        }
+    } else if (tipo === 'especial') {
+        // Guardar elementos especiales como JSON
+        if (elementosEspeciales.length > 0) {
+            formData.append('elementos_json', JSON.stringify(elementosEspeciales));
+        }
+        formData.append('color_asa', '#000000');
+    }
+    
+    // Enviar formulario
+    fetch(this.action || window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.redirected) {
+            window.location.href = response.url;
+        } else if (response.ok) {
+            window.location.href = '/catalogo';
+        }
+    })
+    .catch(error => {
+        console.error('Error guardando combinación:', error);
+        alert('Error al guardar la combinación');
+    });
+});
+
+// Inicializar
+updateColorSelectors('simple');
+setupColorInputs();
+</script>
+
+{% endblock %}
