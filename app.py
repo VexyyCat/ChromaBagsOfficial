@@ -374,6 +374,16 @@ def crear_producto_desde_combinacion():
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@app.route('/inventario')
+def inventario():
+    return render_template('inventario.html')
+
+# 🔹 Ruta para Cotización
+@app.route('/cotizacion')
+def cotizacion():
+    return render_template('cotizacion.html')
+
 
 if __name__ == '__main__':
     app.run(debug=True, host="127.0.0.1", port=5050)

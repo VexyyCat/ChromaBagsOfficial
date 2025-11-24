@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="main-container">
+  <h2 class="titulo-seccion">Gestión de Inventario</h2>
+  <p class="subtitulo">Administrar materiales y stock</p>
+
+  <div class="inventario-grid">
+    <!-- FORMULARIO 1: AGREGAR NUEVO MATERIAL AL CATÁLOGO -->
+    <div class="inventario-card">
+      <h3>Agregar Nuevo Material</h3>
+      <form action="/agregar_material" method="post">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nombre del material</label>
+            <input type="text" name="nombre_material" placeholder="Ej. Tela de seda" required>
+          </div>
+
+          <div class="form-group">
+            <label>Tipo de material</label>
+            <select name="tipo" required>
+              <option value="">Seleccione...</option>
+              <option value="Tela">Tela</option>
+              <option value="Insumo">Insumo</option>
+              <option value="Accesorio">Accesorio</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Unidad de medida</label>
+            <select name="unidad_medida" required>
+              <option value="m">Metros (m)</option>
+              <option value="cm">Centímetros (cm)</option>
+              <option value="kg">Kilogramos (kg)</option>
+              <option value="pieza">Piezas</option>
+              <option value="carrete">Carretes</option>
+              <option value="l">Litros (l)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Costo unitario ($)</label>
+            <input type="number" name="costo_unitario" step="0.01" placeholder="Ej. 150.00" required>
+          </div>
+        </div>
+        <button type="submit" class="btn-rosa">Agregar Material</button>
+      </form>
+    </div>
+
+    <!-- FORMULARIO 2: ACTUALIZAR STOCK DE MATERIALES EXISTENTES -->
+    <div class="inventario-card">
+      <h3>Actualizar Stock</h3>
+      <form action="/actualizar_stock" method="post">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Selecciona material</label>
+            <select name="id_material" required>
+              <option value="">Seleccione...</option>
+              {% for material in materiales %}
+              <option value="{{ material.id_material }}">
+                {{ material.nombre_material }} ({{ material.unidad_medida }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Cantidad a agregar/quitar</label>
+            <input type="number" name="cantidad" placeholder="Ej. 100 (positivo agrega, negativo quita)" required>
+            
+          </div>
+        </div>
+        <button type="submit" class="btn-rosa">Actualizar Stock</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- TABLA: INVENTARIO ACTUAL -->
+  <div class="inventario-card tabla-container">
+    <h3>Inventario Actual de Materiales</h3>
+    <table class="tabla-bonita">
+      <thead>
+        <tr>
+          <th>Material</th>
+          <th>Tipo</th>
+          <th>Unidad</th>
+          <th>Costo Unitario</th>
+          <th>Stock Actual</th>
+          <th>Valor Total</th>
+          <th>Última Actualización</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in inventario %}
+        <tr>
+          <td>{{ item.nombre_material }}</td>
+          <td>{{ item.tipo }}</td>
+          <td>{{ item.unidad_medida }}</td>
+          <td>${{ item.costo_unitario }}</td>
+          <td class="stock-{{ 'bajo' if item.stock_actual < 100 else 'normal' }}">
+            {{ item.stock_actual }} {{ item.unidad_medida }}
+          </td>
+          <td>${{ item.valor_total }}</td>
+          <td>{{ item.fecha_actualizacion or 'Nunca' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="sin-registros">No hay materiales en el inventario</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

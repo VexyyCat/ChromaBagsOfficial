@@ -14,9 +14,11 @@
                 <ul>
                     <li><a href="{{ url_for('diseno_color') }}" class="{% if request.path == '/diseno_color' %}activo{% endif %}">Diseño & colores</a></li>
                     <li><a href="{{ url_for('catalogo') }}" class="{% if request.path == '/catalogo' %}activo{% endif %}">Catálogo</a></li>
-                    <li><a href="#" class="">Inventario</a></li>
+                    
                     <li><a href="{{ url_for('clientes') }}" class="{% if request.path == '/clientes' %}activo{% endif %}">Clientes</a></li>
-                    <li><a href="#">Cotización</a></li>
+                    <li><a href="{{ url_for('cotizacion') }}" class="{% if request.path == '/cotizacion' %}activo{% endif %}">Cotización</a></li>
+                    <li><a href="{{ url_for('inventario') }}" class="{% if request.path == '/inventario' %}activo{% endif %}">Inventario</a></li>
+                    
                     <li><a href="#">Reportes</a></li>
                     <li><a href="#">Respaldo</a></li>
                 </ul>
