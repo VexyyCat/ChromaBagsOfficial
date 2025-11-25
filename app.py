@@ -3,6 +3,8 @@ import json
 from db_connection import get_connection
 from modules.color_manager import ColorManager
 from modules.bag_designer import BagDesigner
+from modules.inventory_manager import InventoryManager
+from modules.quotation_manager import QuotationManager
 
 app = Flask(__name__)
 
@@ -11,7 +13,7 @@ app = Flask(__name__)
 def index():
     return redirect(url_for('clientes'))
 
-# Mostrar clientes
+# ==================== CLIENTES ====================
 @app.route('/clientes')
 def clientes():
     conn = get_connection()
@@ -28,7 +30,6 @@ def clientes():
         conn.close()
     return render_template('clientes.html', clientes=clientes_data)
 
-# Agregar cliente
 @app.route('/agregar_cliente', methods=['POST'])
 def agregar_cliente():
     nombre = request.form['nombre']
@@ -49,7 +50,6 @@ def agregar_cliente():
         conn.close()
     return redirect(url_for('clientes'))
 
-# Eliminar cliente
 @app.route('/eliminar_cliente/<int:id>', methods=['GET', 'POST'])
 def eliminar_cliente(id):
     conn = get_connection()
@@ -64,8 +64,6 @@ def eliminar_cliente(id):
         conn.close()
     return redirect(url_for('clientes'))
 
-
-# Modificar cliente
 @app.route('/modificar_cliente/<int:id>', methods=['POST'])
 def modificar_cliente(id):
     nombre = request.form['nombre']
@@ -87,7 +85,7 @@ def modificar_cliente(id):
         conn.close()
     return redirect(url_for('clientes'))
 
-# CATALOGO - Solo muestra combinaciones guardadas
+# ==================== CATÁLOGO ====================
 @app.route('/catalogo')
 def catalogo():
     conn = get_connection()
@@ -117,7 +115,7 @@ def catalogo():
         conn.close()
     return render_template('catalogo.html', combinaciones=combinaciones)
 
-# DISEÑO COLOR
+# ==================== DISEÑO COLOR ====================
 @app.route('/diseno_color', methods=['GET', 'POST'])
 def diseno_color():
     if request.method == 'POST':
@@ -128,7 +126,7 @@ def diseno_color():
         color_principal = request.form.get('color_principal')
         color_secundario = request.form.get('color_secundario')
         color_asa = request.form.get('color_asa')
-        diseno_json = request.form.get('diseno_json')
+        elementos_json = request.form.get('elementos_json')
 
         conn = get_connection()
         if conn:
@@ -137,7 +135,6 @@ def diseno_color():
             def obtener_id_color(hex_code):
                 if not hex_code:
                     return None
-                # insertar con IGNORE evita duplicados, timeout previene bloqueo
                 cur.execute("""
                     INSERT OR IGNORE INTO colores (nombre_color, codigo_hex)
                     VALUES (?, ?)
@@ -157,14 +154,14 @@ def diseno_color():
                     id_color_secundario, id_color_asa, nombre_guardado, diseno_json
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (id_modelo, esquema, id_color_principal, id_color_secundario, id_color_asa, nombre, diseno_json))
+            """, (id_modelo, esquema, id_color_principal, id_color_secundario, 
+                  id_color_asa, nombre, elementos_json))
             conn.commit()
             cur.close()
             conn.close()
 
         return redirect(url_for('catalogo'))
 
-    # Si no es POST → cargar datos normalmente
     conn = get_connection()
     modelos, paletas, combinaciones = [], [], []
     if conn:
@@ -184,10 +181,158 @@ def diseno_color():
         cur.close()
         conn.close()
 
-    return render_template('diseno_color.html', modelos=modelos, paletas=paletas, combinaciones=combinaciones)
+    return render_template('diseno_color.html', modelos=modelos, paletas=paletas, 
+                         combinaciones=combinaciones)
 
+# ==================== INVENTARIO ====================
+@app.route('/inventario')
+def inventario():
+    inventario_data = InventoryManager.obtener_inventario_completo()
+    materiales = InventoryManager.obtener_materiales()
+    return render_template('inventario.html', inventario=inventario_data, materiales=materiales)
 
-# API: Cargar colores según paleta
+@app.route('/agregar_material', methods=['POST'])
+def agregar_material():
+    nombre = request.form['nombre_material']
+    tipo = request.form['tipo']
+    unidad_medida = request.form['unidad_medida']
+    costo_unitario = float(request.form['costo_unitario'])
+    descripcion = request.form.get('descripcion')
+    
+    resultado = InventoryManager.agregar_material(
+        nombre, tipo, unidad_medida, costo_unitario, descripcion
+    )
+    
+    if not resultado['success']:
+        print(f"Error al agregar material: {resultado['error']}")
+    
+    return redirect(url_for('inventario'))
+
+@app.route('/actualizar_stock', methods=['POST'])
+def actualizar_stock():
+    id_material = int(request.form['id_material'])
+    cantidad = float(request.form['cantidad'])
+    
+    resultado = InventoryManager.actualizar_stock(id_material, cantidad)
+    
+    if not resultado['success']:
+        print(f"Error al actualizar stock: {resultado['error']}")
+    
+    return redirect(url_for('inventario'))
+
+@app.route('/api/verificar_material', methods=['POST'])
+def api_verificar_material():
+    data = request.json
+    id_material = data.get('id_material')
+    cantidad = data.get('cantidad')
+    
+    disponible = InventoryManager.verificar_disponibilidad(id_material, cantidad)
+    
+    return jsonify({'disponible': disponible})
+
+@app.route('/api/materiales_bajo_stock')
+def api_materiales_bajo_stock():
+    umbral = request.args.get('umbral', 100, type=int)
+    materiales = InventoryManager.obtener_materiales_bajo_stock(umbral)
+    return jsonify(materiales)
+
+@app.route('/eliminar_material/<int:id>', methods=['POST'])
+def eliminar_material(id):
+    resultado = InventoryManager.eliminar_material(id)
+    if not resultado['success']:
+        print(f"Error al eliminar material: {resultado['error']}")
+    return redirect(url_for('inventario'))
+
+# ==================== COTIZACIÓN ====================
+@app.route('/cotizacion')
+def cotizacion():
+    cotizaciones = QuotationManager.obtener_cotizaciones()
+    
+    # Obtener clientes para el selector
+    conn = get_connection()
+    clientes_data = []
+    if conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id_cliente, nombre_cliente FROM clientes ORDER BY nombre_cliente")
+        clientes_data = cur.fetchall()
+        cur.close()
+        conn.close()
+    
+    # Obtener productos disponibles
+    productos = QuotationManager.obtener_productos_disponibles()
+    
+    return render_template('cotizacion.html', 
+                         cotizaciones=cotizaciones, 
+                         clientes=clientes_data,
+                         productos=productos)
+
+@app.route('/generar_cotizacion', methods=['POST'])
+def generar_cotizacion():
+    id_cliente = int(request.form['id_cliente'])
+    
+    # Extraer productos del formulario
+    productos = []
+    index = 1
+    while f'productos[{index}][id_combinacion]' in request.form:
+        id_combinacion = request.form.get(f'productos[{index}][id_combinacion]')
+        cantidad = request.form.get(f'productos[{index}][cantidad]')
+        
+        if id_combinacion and cantidad:
+            # Obtener precio del producto (esto debería venir del form o BD)
+            # Por ahora usamos precio base
+            precio = 180  # Precio base, ajustar según tipo
+            
+            productos.append({
+                'id_combinacion': int(id_combinacion),
+                'cantidad': int(cantidad),
+                'precio_unitario': precio
+            })
+        
+        index += 1
+    
+    if not productos:
+        return redirect(url_for('cotizacion'))
+    
+    resultado = QuotationManager.crear_cotizacion(id_cliente, productos)
+    
+    if not resultado['success']:
+        print(f"Error al crear cotización: {resultado['error']}")
+    
+    return redirect(url_for('cotizacion'))
+
+@app.route('/api/cotizacion/<int:id>')
+def api_cotizacion_detalle(id):
+    cotizacion = QuotationManager.obtener_cotizacion_detalle(id)
+    return jsonify(cotizacion)
+
+@app.route('/api/cotizacion/<int:id>/estado', methods=['PUT'])
+def api_actualizar_estado_cotizacion(id):
+    data = request.json
+    nuevo_estado = data.get('estado')
+    
+    resultado = QuotationManager.actualizar_estado_cotizacion(id, nuevo_estado)
+    return jsonify(resultado)
+
+@app.route('/eliminar_cotizacion/<int:id>', methods=['POST'])
+def eliminar_cotizacion(id):
+    resultado = QuotationManager.eliminar_cotizacion(id)
+    if not resultado['success']:
+        print(f"Error al eliminar cotización: {resultado['error']}")
+    return redirect(url_for('cotizacion'))
+
+@app.route('/duplicar_cotizacion/<int:id>', methods=['POST'])
+def duplicar_cotizacion(id):
+    resultado = QuotationManager.duplicar_cotizacion(id)
+    if not resultado['success']:
+        print(f"Error al duplicar cotización: {resultado['error']}")
+    return redirect(url_for('cotizacion'))
+
+@app.route('/api/productos_cotizacion')
+def api_productos_cotizacion():
+    productos = QuotationManager.obtener_productos_disponibles()
+    return jsonify(productos)
+
+# ==================== APIs DE COLOR Y DISEÑO ====================
 @app.route('/api/colores_paleta/<int:id_paleta>')
 def api_colores_paleta(id_paleta):
     conn = get_connection()
@@ -200,7 +345,6 @@ def api_colores_paleta(id_paleta):
         conn.close()
     return jsonify(colores)
 
-# API: Generar diseño de bolsa
 @app.route('/api/generar_diseno', methods=['POST'])
 def api_generar_diseno():
     data = request.json
@@ -223,12 +367,10 @@ def api_generar_diseno():
         
         elif tipo_modelo == 'especial':
             design = designer.create_especial_design()
-            # Los elementos se añadirán desde el frontend
         
         else:
             return jsonify({'error': 'Tipo de modelo no válido'}), 400
         
-        # Validar esquema de colores
         if not designer.validate_design(design, esquema):
             return jsonify({
                 'warning': 'Los colores seleccionados no cumplen con el esquema de armonía',
@@ -244,7 +386,6 @@ def api_generar_diseno():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# API: Validar armonía de colores
 @app.route('/api/validar_armonia', methods=['POST'])
 def api_validar_armonia():
     data = request.json
@@ -276,7 +417,6 @@ def api_validar_armonia():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# API: Sugerir color de asa
 @app.route('/api/sugerir_asa', methods=['POST'])
 def api_sugerir_asa():
     data = request.json
@@ -291,7 +431,7 @@ def api_sugerir_asa():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Ver detalle de combinación
+# ==================== OTRAS RUTAS ====================
 @app.route('/ver_combinacion/<int:id>')
 def ver_combinacion(id):
     conn = get_connection()
@@ -308,7 +448,6 @@ def ver_combinacion(id):
         """, (id,))
         combinacion = cur.fetchone()
         
-        # Obtener colores asociados
         if combinacion:
             color_ids = [
                 combinacion[3],  # id_color_principal
@@ -328,62 +467,6 @@ def ver_combinacion(id):
         conn.close()
     
     return render_template('ver_combinacion.html', combinacion=combinacion, colores=colores)
-
-# Crear producto desde combinación
-@app.route('/crear_producto_desde_combinacion', methods=['POST'])
-def crear_producto_desde_combinacion():
-    data = request.json
-    id_combinacion = data.get('id_combinacion')
-    nombre_producto = data.get('nombre_producto')
-    precio_sugerido = data.get('precio_sugerido')
-    stock = data.get('stock', 0)
-    
-    if not id_combinacion or not nombre_producto:
-        return jsonify({'success': False, 'error': 'Faltan datos requeridos'}), 400
-    
-    conn = get_connection()
-    if not conn:
-        return jsonify({'success': False, 'error': 'Error de conexión a BD'}), 500
-    
-    try:
-        cur = conn.cursor()
-        
-        # Obtener id_modelo de la combinación
-        cur.execute("SELECT id_modelo FROM combinaciones WHERE id_combinacion = ?", (id_combinacion,))
-        resultado = cur.fetchone()
-        
-        if not resultado:
-            return jsonify({'success': False, 'error': 'Combinación no encontrada'}), 404
-        
-        id_modelo = resultado[0]
-        
-        # Insertar producto
-        cur.execute("""
-            INSERT INTO productos_terminados (
-                id_modelo, id_combinacion, nombre_producto, 
-                precio_sugerido, stock
-            ) VALUES (?, ?, ?, ?, ?)
-        """, (id_modelo, id_combinacion, nombre_producto, precio_sugerido, stock))
-        
-        conn.commit()
-        id_producto = cur.lastrowid
-        cur.close()
-        conn.close()
-        
-        return jsonify({'success': True, 'id_producto': id_producto})
-    
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-    
-@app.route('/inventario')
-def inventario():
-    return render_template('inventario.html')
-
-# 🔹 Ruta para Cotización
-@app.route('/cotizacion')
-def cotizacion():
-    return render_template('cotizacion.html')
-
 
 if __name__ == '__main__':
     app.run(debug=True, host="127.0.0.1", port=5050)

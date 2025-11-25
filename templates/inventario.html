@@ -4,11 +4,17 @@
   <h2 class="titulo-seccion">Gestión de Inventario</h2>
   <p class="subtitulo">Administrar materiales y stock</p>
 
+  <!-- Alertas de stock bajo -->
+  <div id="alerta-stock-bajo" class="alerta-inventario" style="display: none;">
+    <h4>⚠️ Materiales con stock bajo</h4>
+    <div id="lista-alertas"></div>
+  </div>
+
   <div class="inventario-grid">
     <!-- FORMULARIO 1: AGREGAR NUEVO MATERIAL AL CATÁLOGO -->
     <div class="inventario-card">
       <h3>Agregar Nuevo Material</h3>
-      <form action="/agregar_material" method="post">
+      <form action="/agregar_material" method="post" id="form-material">
         <div class="form-grid">
           <div class="form-group">
             <label>Nombre del material</label>
@@ -42,6 +48,11 @@
             <label>Costo unitario ($)</label>
             <input type="number" name="costo_unitario" step="0.01" placeholder="Ej. 150.00" required>
           </div>
+
+          <div class="form-group" style="grid-column: span 2;">
+            <label>Descripción (opcional)</label>
+            <textarea name="descripcion" placeholder="Descripción adicional del material" rows="2"></textarea>
+          </div>
         </div>
         <button type="submit" class="btn-rosa">Agregar Material</button>
       </form>
@@ -50,15 +61,16 @@
     <!-- FORMULARIO 2: ACTUALIZAR STOCK DE MATERIALES EXISTENTES -->
     <div class="inventario-card">
       <h3>Actualizar Stock</h3>
-      <form action="/actualizar_stock" method="post">
+      <form action="/actualizar_stock" method="post" id="form-stock">
         <div class="form-grid">
           <div class="form-group">
             <label>Selecciona material</label>
-            <select name="id_material" required>
+            <select name="id_material" id="material-select" required>
               <option value="">Seleccione...</option>
               {% for material in materiales %}
-              <option value="{{ material.id_material }}">
-                {{ material.nombre_material }} ({{ material.unidad_medida }})
+              <option value="{{ material['id_material'] }}" 
+                      data-unidad="{{ material['unidad_medida'] }}">
+                {{ material['nombre_material'] }} ({{ material['unidad_medida'] }})
               </option>
               {% endfor %}
             </select>
@@ -66,10 +78,24 @@
 
           <div class="form-group">
             <label>Cantidad a agregar/quitar</label>
-            <input type="number" name="cantidad" placeholder="Ej. 100 (positivo agrega, negativo quita)" required>
-            
+            <div class="cantidad-control">
+              <button type="button" class="btn-cantidad" onclick="cambiarCantidadStock(-10)">-10</button>
+              <button type="button" class="btn-cantidad" onclick="cambiarCantidadStock(-1)">-1</button>
+              <input type="number" name="cantidad" id="cantidad-input" 
+                     placeholder="Ej. 100" required step="0.01">
+              <button type="button" class="btn-cantidad" onclick="cambiarCantidadStock(1)">+1</button>
+              <button type="button" class="btn-cantidad" onclick="cambiarCantidadStock(10)">+10</button>
+            </div>
+            <small>Positivo para agregar, negativo para quitar</small>
           </div>
         </div>
+        
+        <div id="preview-stock" class="preview-stock" style="display: none;">
+          <span>Stock actual: <strong id="stock-actual">0</strong></span>
+          <span>→</span>
+          <span>Nuevo stock: <strong id="stock-nuevo">0</strong></span>
+        </div>
+        
         <button type="submit" class="btn-rosa">Actualizar Stock</button>
       </form>
     </div>
@@ -77,39 +103,468 @@
 
   <!-- TABLA: INVENTARIO ACTUAL -->
   <div class="inventario-card tabla-container">
-    <h3>Inventario Actual de Materiales</h3>
-    <table class="tabla-bonita">
+    <div class="header-tabla">
+      <h3>Inventario Actual de Materiales</h3>
+      <div class="acciones-tabla">
+        <button class="btn-exportar" onclick="exportarInventario()">
+          📊 Exportar Excel
+        </button>
+        <button class="btn-filtro" onclick="toggleFiltros()">
+          🔍 Filtrar
+        </button>
+      </div>
+    </div>
+
+    <!-- Filtros (ocultos por defecto) -->
+    <div id="filtros-inventario" class="filtros-panel" style="display: none;">
+      <div class="filtro-group">
+        <label>Tipo:</label>
+        <select id="filtro-tipo" onchange="aplicarFiltros()">
+          <option value="">Todos</option>
+          <option value="Tela">Tela</option>
+          <option value="Insumo">Insumo</option>
+          <option value="Accesorio">Accesorio</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      
+      <div class="filtro-group">
+        <label>Stock:</label>
+        <select id="filtro-stock" onchange="aplicarFiltros()">
+          <option value="">Todos</option>
+          <option value="bajo">Stock bajo (&lt;100)</option>
+          <option value="normal">Stock normal (≥100)</option>
+        </select>
+      </div>
+
+      <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar filtros</button>
+    </div>
+
+    <table class="tabla-bonita" id="tabla-inventario">
       <thead>
         <tr>
-          <th>Material</th>
-          <th>Tipo</th>
-          <th>Unidad</th>
-          <th>Costo Unitario</th>
-          <th>Stock Actual</th>
-          <th>Valor Total</th>
+          <th onclick="ordenarTabla(0)">Material 🔽</th>
+          <th onclick="ordenarTabla(1)">Tipo 🔽</th>
+          <th onclick="ordenarTabla(2)">Unidad</th>
+          <th onclick="ordenarTabla(3)">Costo Unit. 🔽</th>
+          <th onclick="ordenarTabla(4)">Stock Actual 🔽</th>
+          <th onclick="ordenarTabla(5)">Valor Total 🔽</th>
           <th>Última Actualización</th>
+          <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for item in inventario %}
-        <tr>
-          <td>{{ item.nombre_material }}</td>
-          <td>{{ item.tipo }}</td>
-          <td>{{ item.unidad_medida }}</td>
-          <td>${{ item.costo_unitario }}</td>
-          <td class="stock-{{ 'bajo' if item.stock_actual < 100 else 'normal' }}">
-            {{ item.stock_actual }} {{ item.unidad_medida }}
+        <tr data-tipo="{{ item['tipo'] }}" 
+            data-stock="{{ item['stock_actual'] }}"
+            class="{% if item['stock_actual'] < 100 %}stock-bajo{% endif %}">
+          <td>{{ item['nombre_material'] }}</td>
+          <td><span class="badge-tipo">{{ item['tipo'] }}</span></td>
+          <td>{{ item['unidad_medida'] }}</td>
+          <td>${{ "%.2f"|format(item['costo_unitario']) }}</td>
+          <td class="stock-cell">
+            <span class="stock-badge {{ 'bajo' if item['stock_actual'] < 100 else 'normal' }}">
+              {{ "%.2f"|format(item['stock_actual']) }} {{ item['unidad_medida'] }}
+            </span>
           </td>
-          <td>${{ item.valor_total }}</td>
-          <td>{{ item.fecha_actualizacion or 'Nunca' }}</td>
+          <td class="valor-total">${{ "%.2f"|format(item['valor_total']) }}</td>
+          <td class="fecha-cell">
+            {% if item['fecha_actualizacion'] %}
+              {{ item['fecha_actualizacion'][:10] }}
+            {% else %}
+              <span class="sin-dato">Nunca</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="acciones-fila">
+              <button class="btn-accion btn-editar" 
+                      onclick="editarMaterial({{ item['id_material'] }})"
+                      title="Editar">
+                ✏️
+              </button>
+              <button class="btn-accion btn-eliminar" 
+                      onclick="confirmarEliminarMaterial({{ item['id_material'] }}, '{{ item['nombre_material'] }}')"
+                      title="Eliminar">
+                🗑️
+              </button>
+            </div>
+          </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="sin-registros">No hay materiales en el inventario</td>
+          <td colspan="8" class="sin-registros">No hay materiales en el inventario</td>
         </tr>
         {% endfor %}
       </tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="5"><strong>VALOR TOTAL DEL INVENTARIO:</strong></td>
+          <td colspan="3" class="total-inventario">
+            <strong id="valor-total-inventario">
+              ${% set total = inventario|sum(attribute='valor_total') %}{{ "%.2f"|format(total) }}
+            </strong>
+          </td>
+        </tr>
+      </tfoot>
     </table>
   </div>
 </div>
+
+<style>
+.main-container {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.alerta-inventario {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 2rem;
+}
+
+.alerta-inventario h4 {
+    margin: 0 0 0.5rem 0;
+    color: #856404;
+}
+
+#lista-alertas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.alerta-item {
+    background: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border-left: 3px solid #dc3545;
+    font-size: 0.9rem;
+}
+
+.inventario-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.inventario-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.cantidad-control {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.btn-cantidad {
+    padding: 0.5rem 1rem;
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-cantidad:hover {
+    background: #e0e0e0;
+}
+
+#cantidad-input {
+    flex: 1;
+    text-align: center;
+    font-weight: bold;
+}
+
+.preview-stock {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.header-tabla {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.acciones-tabla {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-exportar, .btn-filtro {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.btn-exportar {
+    background: #28a745;
+    color: white;
+}
+
+.btn-filtro {
+    background: #6c757d;
+    color: white;
+}
+
+.filtros-panel {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.filtro-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tabla-bonita {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabla-bonita th {
+    background: #f8f9fa;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+    cursor: pointer;
+    user-select: none;
+}
+
+.tabla-bonita th:hover {
+    background: #e9ecef;
+}
+
+.tabla-bonita td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.stock-bajo {
+    background: #fff3cd !important;
+}
+
+.stock-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.stock-badge.bajo {
+    background: #dc3545;
+    color: white;
+}
+
+.stock-badge.normal {
+    background: #28a745;
+    color: white;
+}
+
+.badge-tipo {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    background: #e9ecef;
+    color: #495057;
+}
+
+.acciones-fila {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-accion {
+    padding: 0.25rem 0.5rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+.total-row {
+    background: #f8f9fa;
+    font-weight: bold;
+}
+
+.total-inventario {
+    text-align: right;
+    color: #28a745;
+    font-size: 1.2rem;
+}
+
+.btn-rosa {
+    width: 100%;
+    padding: 0.75rem;
+    background: #FF69B4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-rosa:hover {
+    background: #FF1493;
+}
+
+.sin-dato {
+    color: #999;
+    font-style: italic;
+}
+</style>
+
+<script>
+// Verificar materiales con stock bajo al cargar
+document.addEventListener('DOMContentLoaded', function() {
+    verificarStockBajo();
+});
+
+async function verificarStockBajo() {
+    try {
+        const response = await fetch('/api/materiales_bajo_stock?umbral=100');
+        const materiales = await response.json();
+        
+        if (materiales.length > 0) {
+            const alerta = document.getElementById('alerta-stock-bajo');
+            const lista = document.getElementById('lista-alertas');
+            
+            lista.innerHTML = materiales.map(m => 
+                `<div class="alerta-item">${m.nombre}: ${m.cantidad} ${m.unidad}</div>`
+            ).join('');
+            
+            alerta.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error verificando stock:', error);
+    }
+}
+
+function cambiarCantidadStock(cambio) {
+    const input = document.getElementById('cantidad-input');
+    const valorActual = parseFloat(input.value) || 0;
+    input.value = valorActual + cambio;
+}
+
+function toggleFiltros() {
+    const filtros = document.getElementById('filtros-inventario');
+    filtros.style.display = filtros.style.display === 'none' ? 'flex' : 'none';
+}
+
+function aplicarFiltros() {
+    const tipo = document.getElementById('filtro-tipo').value;
+    const stock = document.getElementById('filtro-stock').value;
+    const filas = document.querySelectorAll('#tabla-inventario tbody tr:not(.sin-registros)');
+    
+    filas.forEach(fila => {
+        let mostrar = true;
+        
+        if (tipo && fila.dataset.tipo !== tipo) {
+            mostrar = false;
+        }
+        
+        if (stock) {
+            const stockActual = parseFloat(fila.dataset.stock);
+            if (stock === 'bajo' && stockActual >= 100) mostrar = false;
+            if (stock === 'normal' && stockActual < 100) mostrar = false;
+        }
+        
+        fila.style.display = mostrar ? '' : 'none';
+    });
+}
+
+function limpiarFiltros() {
+    document.getElementById('filtro-tipo').value = '';
+    document.getElementById('filtro-stock').value = '';
+    aplicarFiltros();
+}
+
+function ordenarTabla(columna) {
+    const tabla = document.getElementById('tabla-inventario');
+    const tbody = tabla.querySelector('tbody');
+    const filas = Array.from(tbody.querySelectorAll('tr:not(.sin-registros)'));
+    
+    filas.sort((a, b) => {
+        const aVal = a.cells[columna].textContent.trim();
+        const bVal = b.cells[columna].textContent.trim();
+        
+        // Intentar comparación numérica
+        const aNum = parseFloat(aVal.replace(/[^0-9.-]+/g, ''));
+        const bNum = parseFloat(bVal.replace(/[^0-9.-]+/g, ''));
+        
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+            return bNum - aNum;
+        }
+        
+        return aVal.localeCompare(bVal);
+    });
+    
+    filas.forEach(fila => tbody.appendChild(fila));
+}
+
+function editarMaterial(id) {
+    alert(`Editar material #${id} - Funcionalidad en desarrollo`);
+}
+
+function confirmarEliminarMaterial(id, nombre) {
+    if (confirm(`¿Estás seguro de eliminar el material "${nombre}"?\n\nEsto también eliminará su registro de inventario.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/eliminar_material/${id}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function exportarInventario() {
+    alert('Exportar inventario a Excel - Funcionalidad en desarrollo');
+}
+</script>
+
 {% endblock %}

@@ -16,12 +16,12 @@
           <select name="id_cliente" id="cliente-select" required>
             <option value="">Seleccione...</option>
             {% for cliente in clientes %}
-            <option value="{{ cliente.id_cliente }}">{{ cliente.nombre_cliente }}</option>
+            <option value="{{ cliente[0] }}">{{ cliente[1] }}</option>
             {% endfor %}
           </select>
         </div>
 
-        <!-- PRODUCTOS - AHORA CON MÚLTIPLES PRODUCTOS -->
+        <!-- PRODUCTOS - MÚLTIPLES PRODUCTOS -->
         <div class="seccion-productos">
           <h4>Productos a cotizar</h4>
           <div id="lista-productos">
@@ -39,9 +39,13 @@
                   <label>Selecciona producto</label>
                   <select name="productos[1][id_combinacion]" class="producto-select" required>
                     <option value="">Seleccione...</option>
-                    <option value="1" data-costo="180">María Bonita - $180 c/u</option>
-                    <option value="2" data-costo="250">Rosa Floral - $250 c/u</option>
-                    <option value="3" data-costo="220">Azul Elegante - $220 c/u</option>
+                    {% for p in productos %}
+                    <option value="{{ p['id_combinacion'] }}" 
+                            data-costo="{{ p['precio'] }}"
+                            data-nombre="{{ p['nombre'] }}">
+                      {{ p['nombre'] }} ({{ p['modelo'] }}) - ${{ p['precio'] }} c/u
+                    </option>
+                    {% endfor %}
                   </select>
                 </div>
 
@@ -72,12 +76,6 @@
             <span>Total estimado:</span>
             <span>$<span id="total-cotizacion">0</span></span>
           </div>
-          
-          <!-- VERIFICACIÓN DE INVENTARIO -->
-          <div id="verificacion-inventario" class="verificacion-inventario">
-            <h5>Verificación de inventario:</h5>
-            <div id="lista-materiales"></div>
-          </div>
         </div>
 
         <button type="submit" class="btn-rosa" id="btn-generar">Generar cotización</button>
@@ -107,42 +105,42 @@
             </tr>
           </thead>
           <tbody>
-            {% for cotizacion in cotizaciones %}
+            {% for cot in cotizaciones %}
             <tr>
-              <td>#{{ cotizacion.id_cotizacion }}</td>
-              <td>{{ cotizacion.nombre_cliente }}</td>
+              <td>#{{ cot['id_cotizacion'] }}</td>
+              <td>{{ cot['nombre_cliente'] }}</td>
               <td>
                 <div class="productos-resumen">
-                  {{ cotizacion.cantidad_productos }} productos
-                  <small>({{ cotizacion.cantidad_total }} unidades)</small>
+                  {{ cot['cantidad_productos'] }} productos
+                  <small>({{ cot['cantidad_total'] }} unidades)</small>
                 </div>
               </td>
-              <td>${{ cotizacion.total_estimado }}</td>
+              <td>${{ "%.2f"|format(cot['total_estimado']) }}</td>
               <td>
-                <span class="estado estado-{{ cotizacion.estado }}">
-                  {{ cotizacion.estado }}
+                <span class="estado estado-{{ cot['estado'] }}">
+                  {{ cot['estado'] }}
                 </span>
               </td>
-              <td>{{ cotizacion.fecha_emision.strftime('%d/%m/%Y') }}</td>
+              <td>{{ cot['fecha_emision'][:10] }}</td>
               <td>
                 <div class="acciones-cotizacion">
-                  <button class="btn-accion btn-editar" 
-                          onclick="editarCotizacion({{ cotizacion.id_cotizacion }})" 
-                          title="Editar">
-                    ✏️
+                  <button class="btn-accion btn-ver" 
+                          onclick="verDetalleCotizacion({{ cot['id_cotizacion'] }})" 
+                          title="Ver detalle">
+                    👁️
                   </button>
                   <button class="btn-accion btn-eliminar" 
-                          onclick="eliminarCotizacion({{ cotizacion.id_cotizacion }})" 
+                          onclick="confirmarEliminarCotizacion({{ cot['id_cotizacion'] }})" 
                           title="Eliminar">
                     🗑️
                   </button>
                   <button class="btn-accion btn-exportar" 
-                          onclick="exportarCotizacion({{ cotizacion.id_cotizacion }})" 
+                          onclick="exportarCotizacion({{ cot['id_cotizacion'] }})" 
                           title="Exportar PDF">
                     📄
                   </button>
                   <button class="btn-accion btn-copiar" 
-                          onclick="copiarCotizacion({{ cotizacion.id_cotizacion }})" 
+                          onclick="confirmarDuplicar({{ cot['id_cotizacion'] }})" 
                           title="Duplicar">
                     📋
                   </button>
@@ -161,13 +159,281 @@
   </div>
 </div>
 
-<!-- JavaScript para funcionalidades -->
+<!-- Modal para ver detalle -->
+<div id="modal-detalle" class="modal" style="display: none;">
+  <div class="modal-content">
+    <span class="close" onclick="cerrarModal()">&times;</span>
+    <h3>Detalle de Cotización</h3>
+    <div id="contenido-detalle"></div>
+  </div>
+</div>
+
+<style>
+.main-container {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.cotizacion-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 2rem;
+}
+
+.cotizacion-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-group select, .form-group input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.seccion-productos {
+    margin: 1.5rem 0;
+}
+
+.producto-item {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.producto-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.producto-numero {
+    font-weight: 600;
+    color: #495057;
+}
+
+.btn-eliminar-producto {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1rem;
+}
+
+.cantidad-control {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.btn-cantidad {
+    flex: 1;
+    padding: 0.5rem;
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.cantidad-input {
+    text-align: center;
+    font-weight: bold;
+}
+
+.btn-agregar-producto {
+    width: 100%;
+    padding: 0.75rem;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.resumen-cotizacion {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.resumen-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.resumen-total {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 2px solid #dee2e6;
+    color: #28a745;
+}
+
+.header-historial {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.btn-exportar-todo {
+    padding: 0.5rem 1rem;
+    background: #17a2b8;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.tabla-bonita {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabla-bonita th {
+    background: #f8f9fa;
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.tabla-bonita td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.productos-resumen small {
+    display: block;
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+.estado {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.estado-pendiente {
+    background: #ffc107;
+    color: #856404;
+}
+
+.estado-aprobada {
+    background: #28a745;
+    color: white;
+}
+
+.estado-rechazada {
+    background: #dc3545;
+    color: white;
+}
+
+.estado-completada {
+    background: #6c757d;
+    color: white;
+}
+
+.acciones-cotizacion {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.btn-accion {
+    padding: 0.25rem 0.5rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+}
+
+.btn-rosa {
+    width: 100%;
+    padding: 0.75rem;
+    background: #FF69B4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-rosa:hover {
+    background: #FF1493;
+}
+
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background: white;
+    margin: 5% auto;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 600px;
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    font-size: 2rem;
+    cursor: pointer;
+}
+</style>
+
 <script>
 let contadorProductos = 1;
+let productosDisponibles = {{ productos|tojson }};
 
-// Agregar nuevo producto
 function agregarProducto() {
     contadorProductos++;
+    const opciones = productosDisponibles.map(p => 
+        `<option value="${p.id_combinacion}" data-costo="${p.precio}" data-nombre="${p.nombre}">
+            ${p.nombre} (${p.modelo}) - $${p.precio} c/u
+        </option>`
+    ).join('');
+    
     const nuevoProducto = `
         <div class="producto-item" data-index="${contadorProductos}">
             <div class="producto-header">
@@ -182,9 +448,7 @@ function agregarProducto() {
                     <label>Selecciona producto</label>
                     <select name="productos[${contadorProductos}][id_combinacion]" class="producto-select" required>
                         <option value="">Seleccione...</option>
-                        <option value="1" data-costo="180">María Bonita - $180 c/u</option>
-                        <option value="2" data-costo="250">Rosa Floral - $250 c/u</option>
-                        <option value="3" data-costo="220">Azul Elegante - $220 c/u</option>
+                        ${opciones}
                     </select>
                 </div>
 
@@ -205,7 +469,6 @@ function agregarProducto() {
     actualizarResumen();
 }
 
-// Eliminar producto
 function eliminarProducto(index) {
     const producto = document.querySelector(`.producto-item[data-index="${index}"]`);
     if (document.querySelectorAll('.producto-item').length > 1) {
@@ -217,7 +480,6 @@ function eliminarProducto(index) {
     }
 }
 
-// Renumerar productos después de eliminar
 function renumerarProductos() {
     const productos = document.querySelectorAll('.producto-item');
     productos.forEach((producto, index) => {
@@ -225,14 +487,12 @@ function renumerarProductos() {
         producto.setAttribute('data-index', nuevoIndex);
         producto.querySelector('.producto-numero').textContent = `Producto ${nuevoIndex}`;
         
-        // Actualizar names de los inputs
         const select = producto.querySelector('.producto-select');
         const cantidad = producto.querySelector('.cantidad-input');
         
         select.name = `productos[${nuevoIndex}][id_combinacion]`;
         cantidad.name = `productos[${nuevoIndex}][cantidad]`;
         
-        // Actualizar eventos de botones
         producto.querySelector('.btn-eliminar-producto').onclick = () => eliminarProducto(nuevoIndex);
         producto.querySelectorAll('.btn-cantidad').forEach(btn => {
             if (btn.textContent === '-') {
@@ -245,7 +505,6 @@ function renumerarProductos() {
     contadorProductos = productos.length;
 }
 
-// Cambiar cantidad
 function cambiarCantidad(index, cambio) {
     const input = document.querySelector(`.producto-item[data-index="${index}"] .cantidad-input`);
     let nuevaCantidad = parseInt(input.value) + cambio;
@@ -256,7 +515,6 @@ function cambiarCantidad(index, cambio) {
     }
 }
 
-// Actualizar resumen en tiempo real
 function actualizarResumen() {
     const productos = document.querySelectorAll('.producto-item');
     let total = 0;
@@ -269,13 +527,14 @@ function actualizarResumen() {
         
         if (selectedOption.value) {
             const precio = parseFloat(selectedOption.getAttribute('data-costo'));
+            const nombre = selectedOption.getAttribute('data-nombre');
             const subtotal = precio * parseInt(cantidad);
             total += subtotal;
             
             detallesHTML += `
                 <div class="resumen-item">
-                    <span>${selectedOption.textContent}</span>
-                    <span>${cantidad} x $${precio} = $${subtotal}</span>
+                    <span>${nombre}</span>
+                    <span>${cantidad} x $${precio} = $${subtotal.toFixed(2)}</span>
                 </div>
             `;
         }
@@ -290,31 +549,62 @@ function actualizarResumen() {
     }
 }
 
-// Event listeners para cambios
+// Event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    // Actualizar resumen cuando cambia selección de producto
     document.addEventListener('change', function(e) {
         if (e.target.classList.contains('producto-select')) {
             actualizarResumen();
         }
     });
-    
-    // Actualizar resumen cuando cambia cantidad (a través de los botones)
-    document.addEventListener('input', function(e) {
-        if (e.target.classList.contains('cantidad-input')) {
-            actualizarResumen();
-        }
-    });
 });
 
-// Funciones de acciones (placeholder)
-function editarCotizacion(id) {
-    alert(`Editar cotización #${id} - Funcionalidad en desarrollo`);
+async function verDetalleCotizacion(id) {
+    try {
+        const response = await fetch(`/api/cotizacion/${id}`);
+        const cotizacion = await response.json();
+        
+        let html = `
+            <p><strong>Cliente:</strong> ${cotizacion.nombre_cliente}</p>
+            <p><strong>Fecha:</strong> ${cotizacion.fecha_emision}</p>
+            <p><strong>Estado:</strong> <span class="estado estado-${cotizacion.estado}">${cotizacion.estado}</span></p>
+            <h4>Productos:</h4>
+            <ul>
+        `;
+        
+        cotizacion.productos.forEach(p => {
+            html += `<li>${p.cantidad} unidades - Subtotal: $${p.subtotal}</li>`;
+        });
+        
+        html += `</ul><p class="total"><strong>Total: $${cotizacion.total_estimado}</strong></p>`;
+        
+        document.getElementById('contenido-detalle').innerHTML = html;
+        document.getElementById('modal-detalle').style.display = 'block';
+    } catch (error) {
+        alert('Error al cargar detalle de cotización');
+    }
 }
 
-function eliminarCotizacion(id) {
-    if (confirm(`¿Estás seguro de que quieres eliminar la cotización #${id}?`)) {
-        alert(`Cotización #${id} eliminada - Funcionalidad en desarrollo`);
+function cerrarModal() {
+    document.getElementById('modal-detalle').style.display = 'none';
+}
+
+function confirmarEliminarCotizacion(id) {
+    if (confirm('¿Estás seguro de eliminar esta cotización?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/eliminar_cotizacion/${id}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function confirmarDuplicar(id) {
+    if (confirm('¿Deseas duplicar esta cotización?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/duplicar_cotizacion/${id}`;
+        document.body.appendChild(form);
+        form.submit();
     }
 }
 
@@ -322,12 +612,9 @@ function exportarCotizacion(id) {
     alert(`Exportando cotización #${id} a PDF - Funcionalidad en desarrollo`);
 }
 
-function copiarCotizacion(id) {
-    alert(`Copiando cotización #${id} - Funcionalidad en desarrollo`);
-}
-
 function exportarTodo() {
     alert('Exportando todo el historial - Funcionalidad en desarrollo');
 }
 </script>
+
 {% endblock %}
