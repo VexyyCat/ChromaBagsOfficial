@@ -18,19 +18,18 @@
                     <li><a href="{{ url_for('clientes') }}" class="{% if request.path == '/clientes' %}activo{% endif %}">Clientes</a></li>
                     <li><a href="{{ url_for('cotizacion') }}" class="{% if request.path == '/cotizacion' %}activo{% endif %}">Cotización</a></li>
                     <li><a href="{{ url_for('inventario') }}" class="{% if request.path == '/inventario' %}activo{% endif %}">Inventario</a></li>
+                    <li><a href="{{ url_for('pedidos') }}" class="{% if request.path == '/pedidos' %}activo{% endif %}">Pedidos</a></li>
                     
-                    <li><a href="#">Reportes</a></li>
-                    <li><a href="#">Respaldo</a></li>
+                    <li><a href="{{ url_for('reportes') }}" class="{% if request.path == '/reportes' %}activo{% endif %}">Reportes</a></li>
+                    <li><a href="{{ url_for('respaldo') }}" class="{% if request.path == '/respaldo' %}activo{% endif %}">Respaldo</a></li>
                 </ul>
             </nav>
         </aside>
-
         <!-- Contenido principal -->
         <main class="contenido">
             <header class="encabezado">
                 <span>usuario:administrador</span>
             </header>
-
             <section class="main-section">
                 {% block content %}{% endblock %}
             </section>

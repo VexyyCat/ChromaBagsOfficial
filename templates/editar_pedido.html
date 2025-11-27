@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="modulo-container">
+    <h2 class="titulo-modulo">Editar Pedido #{{ pedido['id_pedido'] }}</h2>
+    
+    <div class="form-card">
+        <form action="/editar_pedido/{{ pedido['id_pedido'] }}" method="POST" class="formulario">
+            
+            <div class="form-grupo readonly">
+                <label>Cliente:</label>
+                <input type="text" value="{{ pedido['nombre_cliente'] }}" readonly>
+            </div>
+
+            <div class="form-grupo readonly">
+                <label>Producto:</label>
+                <input type="text" value="{{ pedido['nombre_producto'] }}" readonly>
+            </div>
+
+            <div class="form-grupo readonly">
+                <label>Cantidad:</label>
+                <input type="text" value="{{ pedido['cantidad'] }}" readonly>
+            </div>
+
+            <div class="form-grupo readonly">
+                <label>Total:</label>
+                <input type="text" value="${{ '%.2f'|format(pedido['total']) }}" readonly>
+            </div>
+
+            <hr>
+
+            <div class="form-grupo">
+                <label>Fecha de entrega:</label>
+                <input type="date" name="fecha_entrega" value="{{ pedido['fecha_entrega'] }}" required>
+            </div>
+
+            <div class="form-grupo">
+                <label>Estado:</label>
+                <select name="estado" required>
+                    <option value="pendiente" {% if pedido['estado'] == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                    <option value="en_produccion" {% if pedido['estado'] == 'en_produccion' %}selected{% endif %}>En producción</option>
+                    <option value="entregado" {% if pedido['estado'] == 'entregado' %}selected{% endif %}>Entregado</option>
+                    <option value="cancelado" {% if pedido['estado'] == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                </select>
+            </div>
+
+            <div class="botones-form">
+                <button type="submit" class="btn-guardar">💾 Guardar Cambios</button>
+                <a href="/pedidos" class="btn-cancelar">❌ Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.modulo-container {
+    padding: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.titulo-modulo {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+}
+
+.form-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.form-grupo {
+    margin-bottom: 1rem;
+}
+
+.form-grupo label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-grupo input,
+.form-grupo select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.form-grupo.readonly input {
+    background: #f8f9fa;
+    cursor: not-allowed;
+}
+
+hr {
+    margin: 2rem 0;
+    border: none;
+    border-top: 2px solid #e9ecef;
+}
+
+.botones-form {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.btn-guardar,
+.btn-cancelar {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-guardar {
+    background: #28a745;
+    color: white;
+}
+
+.btn-guardar:hover {
+    background: #218838;
+}
+
+.btn-cancelar {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-cancelar:hover {
+    background: #5a6268;
+}
+</style>
+{% endblock %}

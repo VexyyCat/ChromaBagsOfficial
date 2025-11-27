@@ -1,10 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
 import json
 from db_connection import get_connection
 from modules.color_manager import ColorManager
 from modules.bag_designer import BagDesigner
 from modules.inventory_manager import InventoryManager
 from modules.quotation_manager import QuotationManager
+from modules.orders_manager import OrdersManager
+from modules.backup_manager import BackupManager
 
 app = Flask(__name__)
 
@@ -248,7 +250,6 @@ def eliminar_material(id):
 def cotizacion():
     cotizaciones = QuotationManager.obtener_cotizaciones()
     
-    # Obtener clientes para el selector
     conn = get_connection()
     clientes_data = []
     if conn:
@@ -258,7 +259,6 @@ def cotizacion():
         cur.close()
         conn.close()
     
-    # Obtener productos disponibles
     productos = QuotationManager.obtener_productos_disponibles()
     
     return render_template('cotizacion.html', 
@@ -270,7 +270,6 @@ def cotizacion():
 def generar_cotizacion():
     id_cliente = int(request.form['id_cliente'])
     
-    # Extraer productos del formulario
     productos = []
     index = 1
     while f'productos[{index}][id_combinacion]' in request.form:
@@ -278,9 +277,7 @@ def generar_cotizacion():
         cantidad = request.form.get(f'productos[{index}][cantidad]')
         
         if id_combinacion and cantidad:
-            # Obtener precio del producto (esto debería venir del form o BD)
-            # Por ahora usamos precio base
-            precio = 180  # Precio base, ajustar según tipo
+            precio = 180
             
             productos.append({
                 'id_combinacion': int(id_combinacion),
@@ -331,6 +328,130 @@ def duplicar_cotizacion(id):
 def api_productos_cotizacion():
     productos = QuotationManager.obtener_productos_disponibles()
     return jsonify(productos)
+
+# ==================== PEDIDOS ====================
+@app.route('/pedidos')
+def pedidos():
+    conn = get_connection()
+    clientes_data = []
+    productos_data = []
+    
+    if conn:
+        cur = conn.cursor()
+        
+        # Clientes
+        cur.execute("SELECT id_cliente, nombre_cliente FROM clientes ORDER BY nombre_cliente")
+        clientes_data = cur.fetchall()
+        
+        # Productos desde el catálogo (combinaciones)
+        cur.execute("""
+            SELECT 
+                c.id_combinacion,
+                c.nombre_guardado,
+                mb.nombre_modelo,
+                mb.tipo
+            FROM combinaciones c
+            JOIN modelos_bolsas mb ON c.id_modelo = mb.id_modelo
+            ORDER BY c.nombre_guardado
+        """)
+        productos_data = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+    
+    pedidos_data = OrdersManager.obtener_pedidos()
+    
+    return render_template('pedidos.html',
+                         clientes=clientes_data,
+                         productos=productos_data,
+                         pedidos=pedidos_data)
+
+@app.route('/guardar_pedido', methods=['POST'])
+def guardar_pedido():
+    id_cliente = request.form['id_cliente']
+    id_combinacion = request.form['id_combinacion']  # Ahora es id_combinacion
+    cantidad = int(request.form['cantidad'])
+    fecha_entrega = request.form['fecha_entrega']
+    estado = request.form['estado']
+    
+    resultado = OrdersManager.crear_pedido(
+        id_cliente, id_combinacion, cantidad, fecha_entrega, estado
+    )
+    
+    if not resultado['success']:
+        print(f"Error al guardar pedido: {resultado['error']}")
+    
+    return redirect(url_for('pedidos'))
+
+@app.route('/editar_pedido/<int:id_pedido>', methods=['GET', 'POST'])
+def editar_pedido(id_pedido):
+    if request.method == 'POST':
+        fecha_entrega = request.form['fecha_entrega']
+        estado = request.form['estado']
+        
+        resultado = OrdersManager.actualizar_pedido(id_pedido, fecha_entrega, estado)
+        
+        if not resultado['success']:
+            print(f"Error al actualizar pedido: {resultado['error']}")
+        
+        return redirect(url_for('pedidos'))
+    
+    pedido = OrdersManager.obtener_pedido(id_pedido)
+    return render_template('editar_pedido.html', pedido=pedido)
+
+@app.route('/eliminar_pedido/<int:id_pedido>')
+def eliminar_pedido(id_pedido):
+    resultado = OrdersManager.eliminar_pedido(id_pedido)
+    
+    if not resultado['success']:
+        print(f"Error al eliminar pedido: {resultado['error']}")
+    
+    return redirect(url_for('pedidos'))
+
+# ==================== REPORTES ====================
+@app.route('/reportes')
+def reportes():
+    datos = OrdersManager.obtener_pedidos_por_estado()
+    estadisticas = OrdersManager.obtener_estadisticas_dashboard()
+    
+    # Valores por defecto si no hay estadísticas
+    if not estadisticas:
+        estadisticas = {
+            'total_pedidos': 0,
+            'por_estado': {},
+            'ingresos_totales': 0,
+            'pedidos_mes': 0,
+            'ingresos_mes': 0,
+            'clientes_activos': 0,
+            'productos_top': [],
+            'ventas_mensuales': []
+        }
+    
+    return render_template('reportes.html',
+                         por_entregar=datos['por_entregar'],
+                         entregados=datos['entregados'],
+                         vencidos=datos['vencidos'],
+                         todos=datos['todos'],
+                         estadisticas=estadisticas)
+
+# ==================== RESPALDO ====================
+@app.route('/respaldo')
+def respaldo():
+    respaldos = BackupManager.obtener_respaldos()
+    return render_template('respaldo.html', respaldos=respaldos)
+
+@app.route('/descargar_respaldo')
+def descargar_respaldo():
+    resultado = BackupManager.crear_respaldo()
+    
+    if not resultado['success']:
+        return resultado['error'], 500
+    
+    return send_file(
+        resultado['ruta'],
+        as_attachment=True,
+        download_name=resultado['nombre']
+    )
 
 # ==================== APIs DE COLOR Y DISEÑO ====================
 @app.route('/api/colores_paleta/<int:id_paleta>')
@@ -450,10 +571,10 @@ def ver_combinacion(id):
         
         if combinacion:
             color_ids = [
-                combinacion[3],  # id_color_principal
-                combinacion[4],  # id_color_secundario
-                combinacion[5],  # id_color_hilo
-                combinacion[6]   # id_color_asa
+                combinacion[3],
+                combinacion[4],
+                combinacion[5],
+                combinacion[6]
             ]
             
             for cid in color_ids:

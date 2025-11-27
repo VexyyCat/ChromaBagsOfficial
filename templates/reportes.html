@@ -1,0 +1,625 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="reportes-container">
+
+    <div class="reportes-header">
+        <h2>📊 Dashboard de Reportes</h2>
+        <p>Análisis y métricas del sistema</p>
+    </div>
+
+    <!-- KPIs Principales -->
+    <div class="kpis-grid">
+        <div class="kpi-card kpi-primary">
+            <div class="kpi-icon">📦</div>
+            <div class="kpi-content">
+                <h3>{{ estadisticas.total_pedidos if estadisticas else 0 }}</h3>
+                <p>Total Pedidos</p>
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-success">
+            <div class="kpi-icon">💰</div>
+            <div class="kpi-content">
+                <h3>${{ "%.2f"|format(estadisticas.ingresos_totales if estadisticas else 0) }}</h3>
+                <p>Ingresos Totales</p>
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-info">
+            <div class="kpi-icon">📅</div>
+            <div class="kpi-content">
+                <h3>{{ estadisticas.pedidos_mes if estadisticas else 0 }}</h3>
+                <p>Pedidos Este Mes</p>
+                <small>${{ "%.2f"|format(estadisticas.ingresos_mes if estadisticas else 0) }}</small>
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-warning">
+            <div class="kpi-icon">👥</div>
+            <div class="kpi-content">
+                <h3>{{ estadisticas.clientes_activos if estadisticas else 0 }}</h3>
+                <p>Clientes Activos</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estado de Pedidos -->
+    <div class="reportes-grid">
+        <!-- Por Entregar -->
+        <div class="reporte-card card-warning">
+            <div class="card-header">
+                <h3>⏳ Por Entregar</h3>
+                <span class="badge">{{ por_entregar|length }}</span>
+            </div>
+            <div class="pedidos-lista">
+                {% for p in por_entregar[:5] %}
+                <div class="pedido-item">
+                    <div class="pedido-info">
+                        <strong>{{ p[1] }}</strong>
+                        <small>{{ p[2] }}</small>
+                    </div>
+                    <div class="pedido-fecha">
+                        <span class="fecha-entrega">{{ p[4] }}</span>
+                        <span class="badge-estado {{ p[5] }}">{{ p[5] }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <p class="sin-datos">No hay pedidos pendientes</p>
+                {% endfor %}
+                
+                {% if por_entregar|length > 5 %}
+                <a href="#todos" class="ver-mas">Ver todos ({{ por_entregar|length }})</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Entregados -->
+        <div class="reporte-card card-success">
+            <div class="card-header">
+                <h3>✅ Entregados</h3>
+                <span class="badge">{{ entregados|length }}</span>
+            </div>
+            <div class="pedidos-lista">
+                {% for p in entregados[:5] %}
+                <div class="pedido-item">
+                    <div class="pedido-info">
+                        <strong>{{ p[1] }}</strong>
+                        <small>{{ p[2] }}</small>
+                    </div>
+                    <div class="pedido-fecha">
+                        <span class="monto">${{ "%.2f"|format(p[6]) }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <p class="sin-datos">No hay pedidos entregados</p>
+                {% endfor %}
+                
+                {% if entregados|length > 5 %}
+                <a href="#todos" class="ver-mas">Ver todos ({{ entregados|length }})</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Vencidos -->
+        <div class="reporte-card card-danger">
+            <div class="card-header">
+                <h3>⚠️ Vencidos</h3>
+                <span class="badge">{{ vencidos|length }}</span>
+            </div>
+            <div class="pedidos-lista">
+                {% for p in vencidos[:5] %}
+                <div class="pedido-item">
+                    <div class="pedido-info">
+                        <strong>{{ p[1] }}</strong>
+                        <small>{{ p[2] }}</small>
+                    </div>
+                    <div class="pedido-fecha">
+                        <span class="fecha-vencida">{{ p[4] }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <p class="sin-datos">✨ No hay pedidos vencidos</p>
+                {% endfor %}
+                
+                {% if vencidos|length > 5 %}
+                <a href="#todos" class="ver-mas">Ver todos ({{ vencidos|length }})</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Productos Más Vendidos -->
+    <div class="productos-top-section">
+        <h3>🏆 Productos Más Vendidos</h3>
+        {% if estadisticas and estadisticas.productos_top %}
+        <div class="productos-top-grid">
+            {% for producto in estadisticas.productos_top %}
+            <div class="producto-top-card">
+                <div class="producto-ranking">{{ loop.index }}</div>
+                <div class="producto-top-info">
+                    <h4>{{ producto[0] }}</h4>
+                    <p>{{ producto[1] }} unidades vendidas</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="sin-datos">No hay datos de productos vendidos aún</p>
+        {% endif %}
+    </div>
+
+    <!-- Ventas Mensuales -->
+    <div class="ventas-mensuales-section">
+        <h3>📈 Ventas de los Últimos 6 Meses</h3>
+        {% if estadisticas and estadisticas.ventas_mensuales %}
+        <div class="grafica-container">
+            <canvas id="graficaVentas"></canvas>
+        </div>
+        {% else %}
+        <p class="sin-datos">No hay datos de ventas mensuales aún</p>
+        {% endif %}
+    </div>
+
+    <!-- Tabla General -->
+    <div class="tabla-general-section" id="todos">
+        <div class="tabla-header">
+            <h3>📋 Todos los Pedidos</h3>
+            <div class="filtros-rapidos">
+                <button class="btn-filtro active" onclick="filtrarEstado('todos')">Todos ({{ todos|length }})</button>
+                <button class="btn-filtro" onclick="filtrarEstado('pendiente')">Pendientes</button>
+                <button class="btn-filtro" onclick="filtrarEstado('en_produccion')">En Producción</button>
+                <button class="btn-filtro" onclick="filtrarEstado('entregado')">Entregados</button>
+                <button class="btn-filtro" onclick="filtrarEstado('cancelado')">Cancelados</button>
+            </div>
+        </div>
+        
+        <div class="tabla-container">
+            <table class="tabla-reportes">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Producto</th>
+                        <th>Fecha Pedido</th>
+                        <th>Fecha Entrega</th>
+                        <th>Estado</th>
+                        <th>Total</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-body">
+                    {% for p in todos %}
+                    <tr data-estado="{{ p[5] }}">
+                        <td>#{{ p[0] }}</td>
+                        <td>{{ p[1] }}</td>
+                        <td>{{ p[2] }}</td>
+                        <td>{{ p[3][:10] if p[3] else 'N/A' }}</td>
+                        <td>{{ p[4] }}</td>
+                        <td>
+                            <span class="badge-estado {{ p[5] }}">
+                                {{ p[5].replace('_', ' ').title() }}
+                            </span>
+                        </td>
+                        <td class="monto">${{ "%.2f"|format(p[6]) }}</td>
+                        <td>
+                            <a href="/editar_pedido/{{ p[0] }}" class="btn-mini">✏️</a>
+                            <a href="/eliminar_pedido/{{ p[0] }}" 
+                               class="btn-mini btn-danger"
+                               onclick="return confirm('¿Eliminar pedido #{{ p[0] }}?')">🗑️</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<style>
+.reportes-container {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.reportes-header {
+    margin-bottom: 2rem;
+}
+
+.reportes-header h2 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.reportes-header p {
+    color: #666;
+}
+
+/* KPIs */
+.kpis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.kpi-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-left: 4px solid;
+}
+
+.kpi-primary { border-color: #007bff; }
+.kpi-success { border-color: #28a745; }
+.kpi-info { border-color: #17a2b8; }
+.kpi-warning { border-color: #ffc107; }
+
+.kpi-icon {
+    font-size: 3rem;
+}
+
+.kpi-content h3 {
+    font-size: 2rem;
+    margin: 0;
+}
+
+.kpi-content p {
+    margin: 0.25rem 0 0;
+    color: #666;
+}
+
+.kpi-content small {
+    color: #999;
+    font-size: 0.85rem;
+}
+
+/* Reportes Grid */
+.reportes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.reporte-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 1.5rem;
+    border-bottom: 2px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-warning .card-header { background: #fff3cd; }
+.card-success .card-header { background: #d4edda; }
+.card-danger .card-header { background: #f8d7da; }
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.badge {
+    background: rgba(0,0,0,0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-weight: bold;
+}
+
+.pedidos-lista {
+    padding: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.pedido-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.pedido-item:last-child {
+    border-bottom: none;
+}
+
+.pedido-info strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.pedido-info small {
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.pedido-fecha {
+    text-align: right;
+}
+
+.fecha-entrega {
+    display: block;
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 0.25rem;
+}
+
+.fecha-vencida {
+    display: block;
+    font-size: 0.9rem;
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.monto {
+    font-weight: bold;
+    color: #28a745;
+}
+
+.badge-estado {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-estado.pendiente {
+    background: #ffc107;
+    color: #856404;
+}
+
+.badge-estado.en_produccion {
+    background: #17a2b8;
+    color: white;
+}
+
+.badge-estado.entregado {
+    background: #28a745;
+    color: white;
+}
+
+.badge-estado.cancelado {
+    background: #dc3545;
+    color: white;
+}
+
+.ver-mas {
+    display: block;
+    text-align: center;
+    padding: 0.5rem;
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.ver-mas:hover {
+    background: #f8f9fa;
+}
+
+.sin-datos {
+    text-align: center;
+    color: #999;
+    padding: 2rem;
+    font-style: italic;
+}
+
+/* Productos Top */
+.productos-top-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.productos-top-section h3 {
+    margin-bottom: 1.5rem;
+}
+
+.productos-top-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.producto-top-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.producto-ranking {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF69B4, #FF1493);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.producto-top-info h4 {
+    margin: 0 0 0.25rem;
+}
+
+.producto-top-info p {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Ventas Mensuales */
+.ventas-mensuales-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.ventas-mensuales-section h3 {
+    margin-bottom: 1.5rem;
+}
+
+.grafica-container {
+    height: 300px;
+}
+
+/* Tabla General */
+.tabla-general-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.tabla-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.filtros-rapidos {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.btn-filtro {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.btn-filtro:hover {
+    background: #f8f9fa;
+}
+
+.btn-filtro.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.tabla-container {
+    overflow-x: auto;
+}
+
+.tabla-reportes {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabla-reportes th {
+    background: #f8f9fa;
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.tabla-reportes td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.btn-mini {
+    padding: 0.25rem 0.5rem;
+    text-decoration: none;
+    margin: 0 0.25rem;
+}
+
+.btn-danger {
+    color: #dc3545;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// Gráfica de ventas mensuales
+{% if estadisticas and estadisticas.ventas_mensuales %}
+const ventasData = {{ estadisticas.ventas_mensuales|tojson }};
+
+const ctx = document.getElementById('graficaVentas');
+if (ctx && ventasData && ventasData.length > 0) {
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ventasData.map(v => v[0]),
+            datasets: [{
+                label: 'Ventas ($)',
+                data: ventasData.map(v => v[2] || 0),
+                borderColor: '#FF69B4',
+                backgroundColor: 'rgba(255, 105, 180, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+{% endif %}
+
+// Filtrar tabla por estado
+function filtrarEstado(estado) {
+    const filas = document.querySelectorAll('#tabla-body tr');
+    const botones = document.querySelectorAll('.btn-filtro');
+    
+    botones.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    filas.forEach(fila => {
+        if (estado === 'todos' || fila.dataset.estado === estado) {
+            fila.style.display = '';
+        } else {
+            fila.style.display = 'none';
+        }
+    });
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="modulo-container">
+
+    <h2 class="titulo-modulo">Gestión de Pedidos</h2>
+    <p class="descripcion-modulo">
+        Administra los pedidos registrados, asigna fechas de entrega y controla su estado.
+    </p>
+
+    <!-- FORMULARIO NUEVO PEDIDO -->
+    <div class="form-card">
+        <h3>Registrar nuevo pedido</h3>
+
+        <form action="/guardar_pedido" method="POST" class="formulario">
+
+            <div class="form-grupo">
+                <label>Cliente:</label>
+                <select name="id_cliente" required>
+                    <option value="" disabled selected>Selecciona un cliente</option>
+                    {% for c in clientes %}
+                    <option value="{{ c[0] }}">{{ c[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-grupo">
+                <label>Producto (del Catálogo):</label>
+                <select name="id_combinacion" required>
+                    <option value="" disabled selected>Selecciona un diseño</option>
+                    {% for p in productos %}
+                    <option value="{{ p[0] }}">{{ p[1] }} ({{ p[2] }} - {{ p[3] }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-grupo">
+                <label>Cantidad:</label>
+                <input type="number" min="1" name="cantidad" required>
+            </div>
+
+            <div class="form-grupo">
+                <label>Fecha de entrega:</label>
+                <input type="date" name="fecha_entrega" required>
+            </div>
+
+            <div class="form-grupo">
+                <label>Estado:</label>
+                <select name="estado" required>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="en_produccion">En producción</option>
+                    <option value="entregado">Entregado</option>
+                    <option value="cancelado">Cancelado</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn-guardar">Guardar Pedido</button>
+        </form>
+    </div>
+
+    <!-- LISTA DE PEDIDOS -->
+    <div class="tabla-card">
+        <h3>Pedidos registrados</h3>
+
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Cliente</th>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Fecha pedido</th>
+                    <th>Fecha entrega</th>
+                    <th>Estado</th>
+                    <th>Total</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for p in pedidos %}
+                <tr>
+                    <td>#{{ p['id_pedido'] }}</td>
+                    <td>{{ p['nombre_cliente'] }}</td>
+                    <td>{{ p['nombre_producto'] }}</td>
+                    <td>{{ p['cantidad'] }}</td>
+                    <td>{{ p['fecha_pedido'][:10] if p['fecha_pedido'] else 'N/A' }}</td>
+                    <td>{{ p['fecha_entrega'] }}</td>
+                    <td>
+                        <span class="badge-estado {{ p['estado'] }}">
+                            {{ p['estado'].replace('_', ' ').title() }}
+                        </span>
+                    </td>
+                    <td>${{ "%.2f"|format(p['total']) }}</td>
+                    <td>
+                        <a href="/editar_pedido/{{ p['id_pedido'] }}" class="btn-accion editar" title="Editar">✏</a>
+                        <a href="/eliminar_pedido/{{ p['id_pedido'] }}" 
+                           class="btn-accion eliminar" 
+                           onclick="return confirm('¿Eliminar este pedido?')"
+                           title="Eliminar">🗑</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="sin-datos">No hay pedidos registrados</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+</div>
+
+<style>
+.modulo-container {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.titulo-modulo {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.descripcion-modulo {
+    color: #666;
+    margin-bottom: 2rem;
+}
+
+.form-card, .tabla-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.form-grupo {
+    margin-bottom: 1rem;
+}
+
+.form-grupo label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-grupo select,
+.form-grupo input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.btn-guardar {
+    width: 100%;
+    padding: 0.75rem;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-guardar:hover {
+    background: #218838;
+}
+
+.tabla {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabla th {
+    background: #f8f9fa;
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.tabla td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.badge-estado {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.badge-estado.pendiente {
+    background: #ffc107;
+    color: #856404;
+}
+
+.badge-estado.en_produccion {
+    background: #17a2b8;
+    color: white;
+}
+
+.badge-estado.entregado {
+    background: #28a745;
+    color: white;
+}
+
+.badge-estado.cancelado {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-accion {
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+    margin: 0 0.25rem;
+    font-size: 1.2rem;
+}
+
+.sin-datos {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+}
+</style>
+{% endblock %}

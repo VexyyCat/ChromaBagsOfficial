@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="modulo-container">
+  <div class="modulo-header">
+    <h2>Respaldo del Sistema</h2>
+    <p>Descarga una copia de seguridad completa de la información del sistema.</p>
+  </div>
+
+  <div class="respaldo-card">
+    <div class="respaldo-info">
+      <h3>🔒 Respaldo de la Base de Datos</h3>
+      <p>
+        Se generará un archivo con todos los datos del sistema:
+      </p>
+      <ul>
+        <li>✓ Clientes</li>
+        <li>✓ Pedidos</li>
+        <li>✓ Productos y Combinaciones</li>
+        <li>✓ Inventario de Materiales</li>
+        <li>✓ Modelos de bolsas</li>
+        <li>✓ Paletas de colores</li>
+        <li>✓ Cotizaciones</li>
+      </ul>
+      
+      <div class="info-importante">
+        <strong>📌 Importante:</strong> Se recomienda hacer respaldos periódicos (semanalmente).
+      </div>
+    </div>
+
+    <div class="respaldo-accion">
+      <a href="{{ url_for('descargar_respaldo') }}" class="btn-respaldo">
+        📥 Generar y Descargar Respaldo
+      </a>
+    </div>
+  </div>
+
+  <!-- Lista de respaldos existentes -->
+  {% if respaldos %}
+  <div class="respaldos-existentes">
+    <h3>📂 Respaldos Existentes</h3>
+    <table class="tabla-respaldos">
+      <thead>
+        <tr>
+          <th>Nombre del Archivo</th>
+          <th>Fecha</th>
+          <th>Tamaño</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for respaldo in respaldos %}
+        <tr>
+          <td>{{ respaldo['nombre'] }}</td>
+          <td>{{ respaldo['fecha'] }}</td>
+          <td>{{ respaldo['tamano_mb'] }} MB</td>
+          <td>
+            <a href="/descargar_respaldo/{{ respaldo['nombre'] }}" class="btn-mini">⬇️ Descargar</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.modulo-container {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.modulo-header h2 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.modulo-header p {
+    color: #666;
+    margin-bottom: 2rem;
+}
+
+.respaldo-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.respaldo-info h3 {
+    margin-bottom: 1rem;
+}
+
+.respaldo-info ul {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+}
+
+.respaldo-info li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.info-importante {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    border-radius: 4px;
+}
+
+.respaldo-accion {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.btn-respaldo {
+    display: inline-block;
+    padding: 1rem 2rem;
+    background: #28a745;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    transition: all 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.btn-respaldo:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.respaldos-existentes {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.respaldos-existentes h3 {
+    margin-bottom: 1rem;
+}
+
+.tabla-respaldos {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.tabla-respaldos th {
+    background: #f8f9fa;
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.tabla-respaldos td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.btn-mini {
+    padding: 0.25rem 0.75rem;
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.btn-mini:hover {
+    background: #0056b3;
+}
+</style>
+{% endblock %}
