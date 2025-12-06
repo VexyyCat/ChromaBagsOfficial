@@ -1,21 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="clientes-panel">
-    <h1>Registro de Clientes</h1>
+    <h1>Gestión de Clientes</h1>
 
-    <div class="clientes-container">
-        <!-- Formulario -->
-        <form action="{{ url_for('agregar_cliente') }}" method="POST" class="formulario-clientes">
-            <h3>Formulario de registro</h3>
+    <div class="clientes-container-grid">
+        <!-- COLUMNA IZQUIERDA: FORMULARIO -->
+        <div class="columna-formulario">
+            <form action="{{ url_for('agregar_cliente') }}" method="POST" class="formulario-clientes" id="formCliente">
+                <h3>📝 Formulario de Registro</h3>
 
             <label>Nombre</label>
-            <input type="text" name="nombre" placeholder="Nombre completo" required>
+            <input type="text" name="nombre" id="nombre" placeholder="Nombre completo" required>
 
             <label>Teléfono</label>
-            <input type="text" name="telefono" placeholder="Ej. 4271234567" required>
+            <input type="tel" name="telefono" id="telefono" placeholder="10 dígitos" pattern="[0-9]{10}" maxlength="10" required>
 
-            <label>Email</label>
-            <input type="email" name="correo" placeholder="correo@ejemplo.com" required>
+            <label>Correo</label>
+            <input type="email" name="correo" id="correo" placeholder="correo@ejemplo.com" required>
 
             <label>Tipo de Cliente</label>
             <select name="tipo" required>
@@ -25,17 +26,43 @@
             </select>
 
             <label>Dirección</label>
-            <input type="text" name="direccion" placeholder="Ej. Av. Juárez #97" required>
+            <input type="text" name="direccion" id="direccion" placeholder="Ej. Av. Juárez #97" required>
 
-            <button type="submit" class="btn-rosa">Registrar</button>
-        </form>
+            <hr>
 
-        <!-- Lista -->
-        <div class="lista-clientes">
-            <div class="header-lista">
-                <h3>Lista de clientes</h3>
-                <button class="btn-rosa">+ Nuevo Cliente</button>
-            </div>
+            <h4>Datos Fiscales (Opcional)</h4>
+
+            <label>RFC</label>
+            <input type="text" name="rfc" id="rfc" placeholder="13 caracteres" maxlength="13" pattern="[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}">
+
+            <label>Razón Social</label>
+            <input type="text" name="razon_social" id="razon_social" placeholder="Nombre o razón social">
+
+            <label>Uso CFDI</label>
+            <select name="uso_cfdi" id="uso_cfdi">
+                <option value="">Seleccione</option>
+                <option value="G01">G01 - Adquisición de mercancías</option>
+                <option value="G03">G03 - Gastos en general</option>
+                <option value="P01">P01 - Por definir</option>
+            </select>
+
+            <label>Régimen Fiscal</label>
+            <select name="regimen_fiscal" id="regimen_fiscal">
+                <option value="">Seleccione</option>
+                <option value="601">601 - General ley personas morales</option>
+                <option value="612">612 - Persona física actividad empresarial</option>
+            </select>
+
+            <label>Correo de Facturación</label>
+            <input type="email" name="correo_facturacion" id="correo_facturacion" placeholder="correo@facturacion.com">
+
+                <button type="submit" class="btn-rosa">✅ Registrar Cliente</button>
+            </form>
+        </div>
+
+        <!-- COLUMNA DERECHA: LISTA -->
+        <div class="columna-lista">
+            <h3>👥 Lista de Clientes</h3>
 
             <table>
                 <thead>
@@ -43,81 +70,188 @@
                         <th>Nombre</th>
                         <th>Teléfono</th>
                         <th>Correo</th>
-                        <th>Tipo cliente</th>
+                        <th>Tipo</th>
                         <th>Dirección</th>
+                        <th>RFC</th>
+                        <th>Razón Social</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for c in clientes %}
-                    <tr data-id="{{ c[5] }}">
+                    <tr data-id="{{ c[5] }}" 
+                        data-rfc="{{ c[6] or '' }}"
+                        data-razon="{{ c[7] or '' }}"
+                        data-uso-cfdi="{{ c[8] or '' }}"
+                        data-regimen="{{ c[9] or '' }}"
+                        data-correo-fact="{{ c[10] or '' }}">
                         <td>{{ c[0] }}</td>
                         <td>{{ c[1] }}</td>
                         <td>{{ c[2] }}</td>
                         <td>{{ c[3] }}</td>
                         <td>{{ c[4] }}</td>
-                        <td>
-                            <!-- Botón Editar -->
-                            <form action="{{ url_for('modificar_cliente', id=c[5]) }}" method="POST" style="display:inline;">
-                                <input type="hidden" name="nombre" value="{{ c[0] }}">
-                                <input type="hidden" name="telefono" value="{{ c[1] }}">
-                                <input type="hidden" name="correo" value="{{ c[2] }}">
-                                <input type="hidden" name="tipo" value="{{ c[3] }}">
-                                <input type="hidden" name="direccion" value="{{ c[4] }}">
-                                <button type="submit" class="icono editar" title="Editar">✏️</button>
-                            </form>
-                            <!-- Botón Eliminar -->
-                            <form action="{{ url_for('eliminar_cliente', id=c[5]) }}" method="POST" style="display:inline;">
-                                <a href="{{ url_for('eliminar_cliente', id=c[5]) }}" class="icono eliminar" title="Eliminar">🗑️</a>
+                        <td>{{ c[6] or '—' }}</td>
+                        <td>{{ c[7] or '—' }}</td>
+                        <td class="acciones-cliente">
+                            <button class="icono editar" title="Editar cliente">✏️</button>
+                            <form action="{{ url_for('eliminar_cliente', id=c[5]) }}" method="POST" style="display: inline;">
+                                <button class="icono eliminar" type="submit" 
+                                        onclick="return confirm('¿Estás seguro de eliminar al cliente {{ c[0] }}?\n\nNOTA: Si tiene cotizaciones o pedidos asociados, no se podrá eliminar.')" 
+                                        title="Eliminar cliente">🗑️</button>
                             </form>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-
         </div>
     </div>
 </div>
 
 <script>
-    // Convertir campos a mayúsculas automáticamente
-    document.querySelectorAll('input[name="nombre"], input[name="direccion"]').forEach(campo => {
-        campo.addEventListener('input', () => {
-            campo.value = campo.value.toUpperCase();
-        });
+// ✅ VALIDACIONES Y CONVERSIONES AUTOMÁTICAS
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('formCliente');
+    
+    // Convertir a MAYÚSCULAS: nombre, dirección, razón social
+    const camposMayusculas = ['nombre', 'direccion', 'razon_social'];
+    camposMayusculas.forEach(campo => {
+        const input = document.getElementById(campo);
+        if (input) {
+            input.addEventListener('input', function() {
+                this.value = this.value.toUpperCase();
+            });
+        }
     });
+    
+    // Convertir RFC a MAYÚSCULAS y validar formato
+    const rfcInput = document.getElementById('rfc');
+    if (rfcInput) {
+        rfcInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+            // Permitir solo letras, números y &
+            this.value = this.value.replace(/[^A-Z0-9&Ñ]/g, '');
+        });
+    }
+    
+    // Validar teléfono: solo números, 10 dígitos
+    const telefonoInput = document.getElementById('telefono');
+    if (telefonoInput) {
+        telefonoInput.addEventListener('input', function() {
+            // Permitir solo números
+            this.value = this.value.replace(/[^0-9]/g, '');
+            // Limitar a 10 dígitos
+            if (this.value.length > 10) {
+                this.value = this.value.slice(0, 10);
+            }
+        });
+    }
+    
+    // Validación antes de enviar
+    form.addEventListener('submit', function(e) {
+        const telefono = telefonoInput.value;
+        
+        // Validar teléfono
+        if (telefono.length !== 10) {
+            e.preventDefault();
+            alert('El teléfono debe tener exactamente 10 dígitos');
+            telefonoInput.focus();
+            return false;
+        }
+        
+        // Validar RFC si se ingresó
+        const rfc = rfcInput.value;
+        if (rfc && rfc.length !== 12 && rfc.length !== 13) {
+            e.preventDefault();
+            alert('El RFC debe tener 12 o 13 caracteres');
+            rfcInput.focus();
+            return false;
+        }
+        
+        return true;
+    });
+});
 </script>
 
 <!-- 🔧 MODAL PARA EDITAR CLIENTE -->
 <div id="modalEditar" class="modal">
-  <div class="modal-contenido">
-    <h2>Modificar Cliente</h2>
+  <div class="modal-contenido-grande">
+    <h2>✏️ Modificar Cliente</h2>
     <form id="formEditar" method="POST">
       <input type="hidden" id="idEditar">
 
-      <label>Nombre</label>
-      <input type="text" id="nombreEditar" name="nombre" placeholder="Nombre completo" required>
+      <div class="form-grid-modal">
+        <div>
+          <label>Nombre</label>
+          <input type="text" id="nombreEditar" name="nombre" placeholder="Nombre completo" required>
+        </div>
 
-      <label>Teléfono</label>
-      <input type="text" id="telefonoEditar" name="telefono" placeholder="Ej. 4271234567" required>
+        <div>
+          <label>Teléfono</label>
+          <input type="text" id="telefonoEditar" name="telefono" placeholder="10 dígitos" pattern="[0-9]{10}" maxlength="10" required>
+        </div>
 
-      <label>Correo</label>
-      <input type="email" id="correoEditar" name="correo" placeholder="correo@ejemplo.com" required>
+        <div>
+          <label>Correo</label>
+          <input type="email" id="correoEditar" name="correo" placeholder="correo@ejemplo.com" required>
+        </div>
 
-      <label>Tipo de Cliente</label>
-      <select id="tipoEditar" name="tipo" required>
-        <option value="PRIMERIZO">Primerizo</option>
-        <option value="FRECUENTE">Frecuente</option>
-        <option value="OCASIONAL">Ocasional</option>
-      </select>
+        <div>
+          <label>Tipo de Cliente</label>
+          <select id="tipoEditar" name="tipo" required>
+            <option value="PRIMERIZO">Primerizo</option>
+            <option value="FRECUENTE">Frecuente</option>
+            <option value="OCASIONAL">Ocasional</option>
+          </select>
+        </div>
 
-      <label>Dirección</label>
-      <input type="text" id="direccionEditar" name="direccion" placeholder="Ej. Av. Juárez #97" required>
+        <div class="col-span-2">
+          <label>Dirección</label>
+          <input type="text" id="direccionEditar" name="direccion" placeholder="Ej. Av. Juárez #97" required>
+        </div>
+
+        <hr class="col-span-2">
+        <h4 class="col-span-2">Datos Fiscales (Opcional)</h4>
+
+        <div>
+          <label>RFC</label>
+          <input type="text" id="rfcEditar" name="rfc" placeholder="13 caracteres" maxlength="13">
+        </div>
+
+        <div>
+          <label>Razón Social</label>
+          <input type="text" id="razonSocialEditar" name="razon_social" placeholder="Razón social">
+        </div>
+
+        <div>
+          <label>Uso CFDI</label>
+          <select id="usoCfdiEditar" name="uso_cfdi">
+            <option value="">Seleccione</option>
+            <option value="G01">G01 - Adquisición de mercancías</option>
+            <option value="G03">G03 - Gastos en general</option>
+            <option value="P01">P01 - Por definir</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Régimen Fiscal</label>
+          <select id="regimenFiscalEditar" name="regimen_fiscal">
+            <option value="">Seleccione</option>
+            <option value="601">601 - General ley personas morales</option>
+            <option value="612">612 - Persona física actividad empresarial</option>
+          </select>
+        </div>
+
+        <div class="col-span-2">
+          <label>Correo de Facturación</label>
+          <input type="email" id="correoFacturacionEditar" name="correo_facturacion" placeholder="correo@facturacion.com">
+        </div>
+      </div>
 
       <div class="modal-botones">
         <button type="submit" class="btn-rosa">💾 Guardar Cambios</button>
-        <button type="button" id="cancelarEditar" class="btn-borde">Cancelar</button>
+        <button type="button" id="cancelarEditar" class="btn-borde">❌ Cancelar</button>
       </div>
     </form>
   </div>
@@ -134,16 +268,28 @@ document.querySelectorAll('.icono.editar').forEach(btn => {
     e.preventDefault();
     const fila = e.target.closest('tr');
     const id = fila.getAttribute('data-id');
-    formEditar.action = `/modificar_cliente/${id}`;
     const datos = fila.querySelectorAll('td');
 
-    // Llenar el formulario con los valores actuales
+    // Llenar el formulario con los valores actuales (datos básicos)
     document.getElementById('idEditar').value = id;
     document.getElementById('nombreEditar').value = datos[0].textContent.trim();
     document.getElementById('telefonoEditar').value = datos[1].textContent.trim();
     document.getElementById('correoEditar').value = datos[2].textContent.trim();
     document.getElementById('tipoEditar').value = datos[3].textContent.trim();
     document.getElementById('direccionEditar').value = datos[4].textContent.trim();
+    
+    // Datos fiscales desde atributos data
+    const rfc = fila.getAttribute('data-rfc');
+    const razonSocial = fila.getAttribute('data-razon');
+    const usoCfdi = fila.getAttribute('data-uso-cfdi');
+    const regimenFiscal = fila.getAttribute('data-regimen');
+    const correoFact = fila.getAttribute('data-correo-fact');
+    
+    document.getElementById('rfcEditar').value = rfc || '';
+    document.getElementById('razonSocialEditar').value = razonSocial || '';
+    document.getElementById('usoCfdiEditar').value = usoCfdi || '';
+    document.getElementById('regimenFiscalEditar').value = regimenFiscal || '';
+    document.getElementById('correoFacturacionEditar').value = correoFact || '';
 
     // Asignar ruta de envío
     formEditar.action = `/modificar_cliente/${id}`;
@@ -181,11 +327,14 @@ window.addEventListener('click', e => {
 }
 
 /* 🧱 Contenedor del modal */
-.modal-contenido {
+.modal-contenido-grande {
   background: #fff;
   padding: 2rem;
   border-radius: 12px;
-  width: 420px;
+  width: 700px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 4px 12px rgba(0,0,0,0.25);
   animation: aparecer 0.3s ease;
 }
@@ -196,28 +345,58 @@ window.addEventListener('click', e => {
 }
 
 /* 🧾 Estilo de texto y etiquetas */
-.modal-contenido h2 {
-  margin-bottom: 1rem;
+.modal-contenido-grande h2 {
+  margin-bottom: 1.5rem;
   color: #FF69B4;
   text-align: center;
+  font-size: 1.6rem;
 }
 
-.modal-contenido label {
+.modal-contenido-grande h4 {
+  color: #666;
+  font-size: 1.1rem;
+  margin: 1rem 0 0.5rem 0;
+}
+
+.modal-contenido-grande hr {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 1rem 0;
+}
+
+.form-grid-modal {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.col-span-2 {
+  grid-column: span 2;
+}
+
+.modal-contenido-grande label {
   display: block;
   font-weight: 500;
-  margin-top: 0.8rem;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.4rem;
   color: #444;
+  font-size: 0.9rem;
 }
 
-.modal-contenido input,
-.modal-contenido select {
+.modal-contenido-grande input,
+.modal-contenido-grande select {
   width: 100%;
-  padding: 0.5rem;
+  padding: 0.6rem;
   border: 1px solid #ddd;
   border-radius: 6px;
-  margin-bottom: 0.6rem;
   font-size: 0.95rem;
+  transition: border 0.3s;
+}
+
+.modal-contenido-grande input:focus,
+.modal-contenido-grande select:focus {
+  outline: none;
+  border-color: #FF69B4;
+  box-shadow: 0 0 0 3px rgba(255, 105, 180, 0.1);
 }
 
 /* 🎨 Botones */
@@ -230,6 +409,180 @@ window.addEventListener('click', e => {
 .btn-rosa, .btn-borde {
   flex: 1;
   margin: 0 0.25rem;
+}
+
+/* 🎨 DISEÑO DE DOS COLUMNAS */
+.clientes-panel {
+  padding: 2rem;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.clientes-panel h1 {
+  text-align: center;
+  color: #FF69B4;
+  margin-bottom: 2rem;
+  font-size: 2.2rem;
+}
+
+.clientes-container-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 2rem;
+  min-height: 600px;
+}
+
+/* Columna izquierda - Formulario */
+.columna-formulario {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  height: fit-content;
+  position: sticky;
+  top: 20px;
+}
+
+.columna-formulario h3 {
+  color: #FF69B4;
+  margin-bottom: 1.5rem;
+  font-size: 1.4rem;
+  border-bottom: 2px solid #FFE4E1;
+  padding-bottom: 0.5rem;
+}
+
+.formulario-clientes {
+  display: flex;
+  flex-direction: column;
+}
+
+.formulario-clientes label {
+  margin-top: 0.8rem;
+  margin-bottom: 0.3rem;
+  color: #555;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.formulario-clientes input,
+.formulario-clientes select {
+  padding: 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: border 0.3s;
+}
+
+.formulario-clientes input:focus,
+.formulario-clientes select:focus {
+  outline: none;
+  border-color: #FF69B4;
+  box-shadow: 0 0 0 3px rgba(255, 105, 180, 0.1);
+}
+
+.formulario-clientes hr {
+  margin: 1.5rem 0;
+  border: none;
+  border-top: 1px solid #eee;
+}
+
+.formulario-clientes h4 {
+  color: #666;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.formulario-clientes .btn-rosa {
+  margin-top: 1.5rem;
+  padding: 0.8rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Columna derecha - Lista */
+.columna-lista {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow-x: auto;
+}
+
+.columna-lista h3 {
+  color: #FF69B4;
+  margin-bottom: 1.5rem;
+  font-size: 1.4rem;
+  border-bottom: 2px solid #FFE4E1;
+  padding-bottom: 0.5rem;
+}
+
+.columna-lista table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.columna-lista thead {
+  background: #FF69B4;
+  color: white;
+}
+
+.columna-lista th {
+  padding: 0.8rem 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.columna-lista tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.columna-lista tbody tr:hover {
+  background: #FFF5F8;
+}
+
+.columna-lista td {
+  padding: 0.8rem 0.5rem;
+  color: #333;
+}
+
+.acciones-cliente {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.icono {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.icono.editar:hover {
+  background: #4CAF50;
+  transform: scale(1.1);
+}
+
+.icono.eliminar:hover {
+  background: #f44336;
+  transform: scale(1.1);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .clientes-container-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .columna-formulario {
+    position: static;
+  }
 }
 </style>
 

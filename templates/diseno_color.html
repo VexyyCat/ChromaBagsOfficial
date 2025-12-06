@@ -409,8 +409,8 @@ document.getElementById('modelo_bolsa').addEventListener('change', function() {
     elementosEspeciales = [];
     document.getElementById('elementos-especiales').innerHTML = '';
     
-    // Actualizar vista
-    updatePreview();
+    // Actualizar vista inmediatamente
+    setTimeout(() => updatePreview(), 100);
 });
 
 function updateColorSelectors(tipo) {
@@ -525,12 +525,18 @@ function updatePreview() {
         asaDer.setAttribute('stroke', colorAsa);
         
     } else if (tipo === 'especial') {
-        // Fondo base gris
+        // Fondo base gris claro
         cuerpo.setAttribute('fill', '#F5F5F5');
-        cuerpo.setAttribute('y', '0');
+        cuerpo.setAttribute('y', '75');
         cuerpo.setAttribute('height', '400');
         
+        // Limpiar rectángulo superior si existe
+        const rectSuperior = document.getElementById('rect-superior');
+        if (rectSuperior) rectSuperior.remove();
+        
         // Las asas se pueden personalizar
+        asaIzq.setAttribute('fill', '#000000');
+        asaDer.setAttribute('fill', '#000000');
         asaIzq.setAttribute('stroke', '#000000');
         asaDer.setAttribute('stroke', '#000000');
         
@@ -617,6 +623,10 @@ document.getElementById('aplicar-elemento')?.addEventListener('click', function(
     
     elementosEspeciales.push(elemento);
     renderElementosEspeciales();
+    
+    // Limpiar tool actual
+    currentTool = null;
+    document.querySelectorAll('.btn-herramienta').forEach(b => b.classList.remove('active'));
 });
 
 function renderElementosEspeciales() {
@@ -814,7 +824,7 @@ document.getElementById('form-diseno').addEventListener('submit', function(e) {
     } else if (tipo === 'especial') {
         // Guardar elementos especiales como JSON
         if (elementosEspeciales.length > 0) {
-            formData.append('diseno_json', JSON.stringify(elementosEspeciales)); // ✅ nombre correcto
+            formData.append('elementos_json', JSON.stringify(elementosEspeciales)); // ✅ nombre correcto del campo
         }
         formData.append('color_asa', '#000000');
     }
@@ -824,7 +834,12 @@ document.getElementById('form-diseno').addEventListener('submit', function(e) {
         method: 'POST',
         body: formData
     })
-    .then(response => {
+    .then(async response => {
+        if (response.status === 400) {
+            const data = await response.json();
+            alert(data.error || 'El nombre de la combinación ya existe. Por favor elige otro nombre.');
+            return;
+        }
         if (response.redirected) {
             window.location.href = response.url;
         } else if (response.ok) {

@@ -24,10 +24,14 @@
                     
                     {% else %}
                         <!-- Modelo Especial -->
-                        <rect x="0" y="0" width="300" height="400" fill="#F5F5F5" stroke="#333" stroke-width="2"/>
-                        <text x="150" y="200" text-anchor="middle" font-size="24" fill="#666">Especial</text>
-                        <rect x="98" y="8" width="14" height="90" rx="7" ry="7" fill="#000000"/>
-                        <rect x="188" y="8" width="14" height="90" rx="7" ry="7" fill="#000000"/>
+                        <rect x="0" y="75" width="300" height="400" fill="#F5F5F5" stroke="#333" stroke-width="2"/>
+                        <rect x="98" y="8" width="14" height="90" rx="7" ry="7" fill="#000000" stroke="#000000" stroke-width="1"/>
+                        <rect x="188" y="8" width="14" height="90" rx="7" ry="7" fill="#000000" stroke="#000000" stroke-width="1"/>
+                        
+                        {% if c[9] %}
+                            <!-- Elementos personalizados -->
+                            <g class="elementos-especiales" data-elementos="{{ c[9] }}"></g>
+                        {% endif %}
                     {% endif %}
                 </svg>
             </div>
@@ -37,6 +41,12 @@
                 <p><strong>Modelo:</strong> {{ c[4] }} ({{ c[5] }})</p>
                 <p><strong>Esquema:</strong> {{ c[2] }}</p>
                 <p><strong>Fecha:</strong> {{ c[3] }}</p>
+            </div>
+            
+            <div class="acciones-catalogo">
+                <button class="btn-eliminar-catalogo" onclick="confirmarEliminar({{ c[0] }}, '{{ c[1] }}')" title="Eliminar diseño">
+                    🗑️ Eliminar
+                </button>
             </div>
         </div>
         {% endfor %}
@@ -140,6 +150,100 @@
 .mensaje-vacio a:hover {
     text-decoration: underline;
 }
+
+.acciones-catalogo {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-eliminar-catalogo {
+    background: #ff4444;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.btn-eliminar-catalogo:hover {
+    background: #cc0000;
+    transform: scale(1.05);
+}
 </style>
+
+<script>
+function confirmarEliminar(idCombinacion, nombreDiseno) {
+    if (confirm(`¿Estás seguro de eliminar el diseño "${nombreDiseno}"?\n\nEsta acción no se puede deshacer.`)) {
+        // Crear formulario y enviarlo
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/eliminar_combinacion/${idCombinacion}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Renderizar elementos especiales en las miniaturas
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.elementos-especiales').forEach(container => {
+        const elementosJson = container.getAttribute('data-elementos');
+        if (!elementosJson) return;
+        
+        try {
+            const elementos = JSON.parse(elementosJson);
+            
+            elementos.forEach(elem => {
+                const anchoReal = (elem.ancho / 100) * 300;
+                const altoReal = (elem.alto / 100) * 400;
+                const xReal = (elem.x / 100) * 300;
+                const yReal = ((elem.y / 100) * 400) + 75; // Ajuste para la posición Y (offset de 75)
+                
+                if (elem.tipo === 'rectangulo') {
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', xReal);
+                    rect.setAttribute('y', yReal);
+                    rect.setAttribute('width', anchoReal);
+                    rect.setAttribute('height', altoReal);
+                    rect.setAttribute('fill', elem.color);
+                    rect.setAttribute('stroke', '#333');
+                    rect.setAttribute('stroke-width', '1');
+                    container.appendChild(rect);
+                    
+                } else if (elem.tipo === 'circulo') {
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    const radio = Math.min(anchoReal, altoReal) / 2;
+                    circle.setAttribute('cx', xReal + anchoReal / 2);
+                    circle.setAttribute('cy', yReal + altoReal / 2);
+                    circle.setAttribute('r', radio);
+                    circle.setAttribute('fill', elem.color);
+                    circle.setAttribute('stroke', '#333');
+                    circle.setAttribute('stroke-width', '1');
+                    container.appendChild(circle);
+                    
+                } else if (elem.tipo === 'asa') {
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    const d = `M ${xReal},${yReal} Q ${xReal + anchoReal/2},${yReal - 30} ${xReal + anchoReal},${yReal}`;
+                    path.setAttribute('d', d);
+                    path.setAttribute('stroke', elem.color);
+                    path.setAttribute('stroke-width', '8');
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('stroke-linecap', 'round');
+                    container.appendChild(path);
+                }
+            });
+        } catch (error) {
+            console.error('Error renderizando elementos especiales:', error);
+        }
+    });
+});
+</script>
 
 {% endblock %}

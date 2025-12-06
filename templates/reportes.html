@@ -478,10 +478,16 @@
 
 .ventas-mensuales-section h3 {
     margin-bottom: 1.5rem;
+    color: #4a148c;
+    font-size: 1.5rem;
 }
 
 .grafica-container {
-    height: 300px;
+    height: 400px;
+    padding: 20px;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
 }
 
 /* Tabla General */
@@ -561,47 +567,149 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+// Función para formatear mes a español
+function formatearMes(mesISO) {
+    const meses = {
+        '01': 'Enero', '02': 'Febrero', '03': 'Marzo', 
+        '04': 'Abril', '05': 'Mayo', '06': 'Junio',
+        '07': 'Julio', '08': 'Agosto', '09': 'Septiembre',
+        '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre'
+    };
+    const [año, mes] = mesISO.split('-');
+    return `${meses[mes]} ${año}`;
+}
+
 // Gráfica de ventas mensuales
-{% if estadisticas and estadisticas.ventas_mensuales %}
+{% if estadisticas and estadisticas.ventas_mensuales and estadisticas.ventas_mensuales|length > 0 %}
 const ventasData = {{ estadisticas.ventas_mensuales|tojson }};
 
 const ctx = document.getElementById('graficaVentas');
 if (ctx && ventasData && ventasData.length > 0) {
     new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
-            labels: ventasData.map(v => v[0]),
-            datasets: [{
-                label: 'Ventas ($)',
-                data: ventasData.map(v => v[2] || 0),
-                borderColor: '#FF69B4',
-                backgroundColor: 'rgba(255, 105, 180, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
+            labels: ventasData.map(v => formatearMes(v[0])),
+            datasets: [
+                {
+                    label: 'Ventas ($)',
+                    data: ventasData.map(v => v[2] || 0),
+                    backgroundColor: 'rgba(106, 27, 154, 0.8)',
+                    borderColor: '#6a1b9a',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Pedidos',
+                    data: ventasData.map(v => v[1] || 0),
+                    backgroundColor: 'rgba(248, 187, 208, 0.8)',
+                    borderColor: '#f8bbd0',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    yAxisID: 'y1'
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             plugins: {
                 legend: {
                     display: true,
-                    position: 'top'
+                    position: 'top',
+                    labels: {
+                        font: {
+                            size: 14,
+                            weight: '600'
+                        },
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 12,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                if (context.datasetIndex === 0) {
+                                    label += '$' + context.parsed.y.toFixed(2);
+                                } else {
+                                    label += context.parsed.y + ' pedidos';
+                                }
+                            }
+                            return label;
+                        }
+                    }
                 }
             },
             scales: {
                 y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
                             return '$' + value.toFixed(0);
+                        },
+                        font: {
+                            size: 12
                         }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value + ' pedidos';
+                        },
+                        font: {
+                            size: 12
+                        }
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: {
+                            size: 12,
+                            weight: '500'
+                        }
+                    },
+                    grid: {
+                        display: false
                     }
                 }
             }
         }
     });
 }
+{% else %}
+console.log('No hay datos de ventas para mostrar en la gráfica');
 {% endif %}
 
 // Filtrar tabla por estado

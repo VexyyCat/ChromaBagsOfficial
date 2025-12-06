@@ -548,9 +548,27 @@ function ordenarTabla(columna) {
     filas.forEach(fila => tbody.appendChild(fila));
 }
 
-function editarMaterial(id) {
-    alert(`Editar material #${id} - Funcionalidad en desarrollo`);
+async function editarMaterial(id) {
+    const res = await fetch(`/api/material/${id}`);
+    const data = await res.json();
+
+    document.getElementById("edit-id").value = id;
+    document.getElementById("edit-nombre").value = data.nombre_material;
+    document.getElementById("edit-tipo").value = data.tipo;
+    document.getElementById("edit-unidad").value = data.unidad_medida;
+    document.getElementById("edit-costo").value = data.costo_unitario;
+    document.getElementById("edit-descripcion").value = data.descripcion || "";
+
+    const form = document.getElementById("form-editar");
+    form.action = `/modificar_material/${id}`;
+
+    document.getElementById("modal-editar").style.display = "flex";
 }
+
+function cerrarModal() {
+    document.getElementById("modal-editar").style.display = "none";
+}
+
 
 function confirmarEliminarMaterial(id, nombre) {
     if (confirm(`¿Estás seguro de eliminar el material "${nombre}"?\n\nEsto también eliminará su registro de inventario.`)) {
@@ -563,8 +581,60 @@ function confirmarEliminarMaterial(id, nombre) {
 }
 
 function exportarInventario() {
-    alert('Exportar inventario a Excel - Funcionalidad en desarrollo');
+    window.location.href = '/exportar_inventario_excel';
 }
 </script>
+
+<div id="modal-editar" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Editar Material</h3>
+
+        <form id="form-editar" method="POST">
+            <input type="hidden" id="edit-id">
+
+            <label>Nombre</label>
+            <input type="text" name="nombre_material" id="edit-nombre" required>
+
+            <label>Tipo</label>
+            <select name="tipo" id="edit-tipo">
+                <option value="Tela">Tela</option>
+                <option value="Insumo">Insumo</option>
+                <option value="Accesorio">Accesorio</option>
+                <option value="Otro">Otro</option>
+            </select>
+
+            <label>Unidad de medida</label>
+            <select name="unidad_medida" id="edit-unidad">
+                <option value="m">Metros</option>
+                <option value="cm">Centímetros</option>
+                <option value="kg">Kilogramos</option>
+                <option value="pieza">Piezas</option>
+                <option value="carrete">Carretes</option>
+                <option value="l">Litros</option>
+            </select>
+
+            <label>Costo unitario</label>
+            <input type="number" name="costo_unitario" id="edit-costo" step="0.01" required>
+
+            <label>Descripción</label>
+            <textarea name="descripcion" id="edit-descripcion"></textarea>
+
+            <button type="submit" class="btn-rosa">Guardar cambios</button>
+            <button type="button" onclick="cerrarModal()">Cancelar</button>
+        </form>
+    </div>
+</div>
+
+<style>
+.modal {
+    position: fixed; top:0; left:0; width:100%; height:100%;
+    background: rgba(0,0,0,0.5);
+    display:flex; justify-content:center; align-items:center;
+}
+.modal-content {
+    background:white; padding:2rem; border-radius:8px; width:430px;
+}
+</style>
+
 
 {% endblock %}

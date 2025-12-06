@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- ========================================= -->
+<!-- MÓDULO DE FACTURACIÓN AUTOMÁTICA -->
+<!-- Los datos fiscales se toman del cliente -->
+<!-- ========================================= -->
+
+<div class="contenedor-principal">
+
+  <h2 class="titulo-modulo">📄 Facturación</h2>
+  <p class="subtitulo-modulo">Pedidos pagados listos para generar factura</p>
+
+  <div class="factura-box">
+
+    <table class="tabla-facturacion">
+      <thead>
+        <tr>
+          <th>ID Pedido</th>
+          <th>Cliente</th>
+          <th>Subtotal</th>
+          <th>IVA (16%)</th>
+          <th>Total</th>
+          <th>Estatus</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        {% for p in pedidos_pagados %}
+        {% set subtotal = p['total'] / 1.16 %}
+        {% set iva = p['total'] - subtotal %}
+        <tr>
+          <td><strong>#{{ p['id_pedido'] }}</strong></td>
+          <td>{{ p['nombre_cliente'] }}</td>
+          <td>${{ "%.2f"|format(subtotal) }}</td>
+          <td>${{ "%.2f"|format(iva) }}</td>
+          <td><strong>${{ "%.2f"|format(p['total']) }}</strong></td>
+          <td><span class="estado-pagado">Pagado</span></td>
+          <td>
+            <form method="POST" action="{{ url_for('generar_factura', id_pedido=p['id_pedido']) }}" style="display: inline;">
+              <button type="submit" class="btn-factura">
+                📄 Generar Factura
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+
+        {% if pedidos_pagados|length == 0 %}
+        <tr>
+          <td colspan="7" style="text-align:center; padding: 2rem;">
+            No hay pedidos pagados pendientes de facturación
+          </td>
+        </tr>
+        {% endif %}
+
+      </tbody>
+    </table>
+
+  </div>
+
+</div>
+
+<style>
+.contenedor-principal {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.titulo-modulo {
+    font-size: 2rem;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.subtitulo-modulo {
+    color: #666;
+    font-size: 1rem;
+    margin-bottom: 2rem;
+}
+
+.factura-box {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.tabla-facturacion {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabla-facturacion thead {
+    background: #667eea;
+    color: white;
+}
+
+.tabla-facturacion th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    border: none;
+    font-size: 0.95rem;
+}
+
+.tabla-facturacion td {
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.tabla-facturacion tbody tr:hover {
+    background: #f9f9f9;
+}
+
+.estado-pagado {
+    display: inline-block;
+    padding: 0.4rem 1rem;
+    background: #28a745;
+    color: white;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.btn-factura {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.btn-factura:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.btn-factura:active {
+    transform: translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .tabla-facturacion {
+        font-size: 0.9rem;
+    }
+    
+    .tabla-facturacion th,
+    .tabla-facturacion td {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .btn-factura {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+}
+</style>
+
+{% endblock %}

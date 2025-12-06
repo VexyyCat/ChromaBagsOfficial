@@ -72,9 +72,19 @@
         <div id="resumen-cotizacion" class="resumen-cotizacion" style="display: none;">
           <h4>Resumen de cotización:</h4>
           <div id="detalles-productos"></div>
-          <div class="resumen-total">
-            <span>Total estimado:</span>
-            <span>$<span id="total-cotizacion">0</span></span>
+          <div class="resumen-desglose">
+            <div class="linea-resumen">
+              <span>Subtotal:</span>
+              <span>$<span id="subtotal-cotizacion">0</span></span>
+            </div>
+            <div class="linea-resumen">
+              <span>IVA (16%):</span>
+              <span>$<span id="iva-cotizacion">0</span></span>
+            </div>
+            <div class="resumen-total">
+              <span><strong>Total:</strong></span>
+              <span><strong>$<span id="total-cotizacion">0</span></strong></span>
+            </div>
           </div>
         </div>
 
@@ -129,6 +139,19 @@
                           title="Ver detalle">
                     👁️
                   </button>
+                  {% if cot['estado'] == 'pendiente' %}
+                  <button class="btn-accion btn-aprobar" 
+                          onclick="aprobarCotizacion({{ cot['id_cotizacion'] }})" 
+                          title="Aprobar cotización">
+                    ✅
+                  </button>
+                  {% elif cot['estado'] == 'aprobada' %}
+                  <button class="btn-accion btn-rechazar" 
+                          onclick="rechazarCotizacion({{ cot['id_cotizacion'] }})" 
+                          title="Regresar a pendiente">
+                    ❌
+                  </button>
+                  {% endif %}
                   <button class="btn-accion btn-eliminar" 
                           onclick="confirmarEliminarCotizacion({{ cot['id_cotizacion'] }})" 
                           title="Eliminar">
@@ -288,15 +311,29 @@
     border-bottom: 1px solid #dee2e6;
 }
 
+.resumen-desglose {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 2px solid #dee2e6;
+}
+
+.linea-resumen {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    font-size: 1rem;
+    color: #666;
+}
+
 .resumen-total {
     display: flex;
     justify-content: space-between;
     font-weight: bold;
-    font-size: 1.2rem;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 2px solid #dee2e6;
-    color: #28a745;
+    font-size: 1.3rem;
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 2px solid #FF69B4;
+    color: #FF69B4;
 }
 
 .header-historial {
@@ -377,6 +414,21 @@
     background: none;
     cursor: pointer;
     font-size: 1.2rem;
+    transition: transform 0.2s;
+}
+
+.btn-accion:hover {
+    transform: scale(1.2);
+}
+
+.btn-aprobar:hover {
+    background: #4CAF50;
+    border-radius: 4px;
+}
+
+.btn-rechazar:hover {
+    background: #f44336;
+    border-radius: 4px;
 }
 
 .btn-rosa {
@@ -517,7 +569,7 @@ function cambiarCantidad(index, cambio) {
 
 function actualizarResumen() {
     const productos = document.querySelectorAll('.producto-item');
-    let total = 0;
+    let subtotal = 0;
     let detallesHTML = '';
     
     productos.forEach(producto => {
@@ -528,21 +580,26 @@ function actualizarResumen() {
         if (selectedOption.value) {
             const precio = parseFloat(selectedOption.getAttribute('data-costo'));
             const nombre = selectedOption.getAttribute('data-nombre');
-            const subtotal = precio * parseInt(cantidad);
-            total += subtotal;
+            const subtotalProducto = precio * parseInt(cantidad);
+            subtotal += subtotalProducto;
             
             detallesHTML += `
                 <div class="resumen-item">
                     <span>${nombre}</span>
-                    <span>${cantidad} x $${precio} = $${subtotal.toFixed(2)}</span>
+                    <span>${cantidad} x $${precio} = $${subtotalProducto.toFixed(2)}</span>
                 </div>
             `;
         }
     });
     
     if (detallesHTML) {
+        const iva = subtotal * 0.16;
+        const total = subtotal + iva;
+        
         document.getElementById('resumen-cotizacion').style.display = 'block';
         document.getElementById('detalles-productos').innerHTML = detallesHTML;
+        document.getElementById('subtotal-cotizacion').textContent = subtotal.toFixed(2);
+        document.getElementById('iva-cotizacion').textContent = iva.toFixed(2);
         document.getElementById('total-cotizacion').textContent = total.toFixed(2);
     } else {
         document.getElementById('resumen-cotizacion').style.display = 'none';
@@ -572,10 +629,10 @@ async function verDetalleCotizacion(id) {
         `;
         
         cotizacion.productos.forEach(p => {
-            html += `<li>${p.cantidad} unidades - Subtotal: $${p.subtotal}</li>`;
+            html += `<li><strong>${p.nombre_producto}</strong> - ${p.cantidad} unidades × $${p.precio_unitario.toFixed(2)} = $${p.subtotal.toFixed(2)}</li>`;
         });
         
-        html += `</ul><p class="total"><strong>Total: $${cotizacion.total_estimado}</strong></p>`;
+        html += `</ul><p class="total"><strong>Total: $${cotizacion.total_estimado.toFixed(2)}</strong></p>`;
         
         document.getElementById('contenido-detalle').innerHTML = html;
         document.getElementById('modal-detalle').style.display = 'block';
@@ -609,11 +666,67 @@ function confirmarDuplicar(id) {
 }
 
 function exportarCotizacion(id) {
-    alert(`Exportando cotización #${id} a PDF - Funcionalidad en desarrollo`);
+    window.location.href = `/exportar_cotizacion/${id}`;
 }
 
 function exportarTodo() {
-    alert('Exportando todo el historial - Funcionalidad en desarrollo');
+    window.location.href = '/exportar_todas_cotizaciones';
+}
+
+async function aprobarCotizacion(id) {
+    if (confirm('¿Deseas aprobar esta cotización?\n\n✅ Se creará automáticamente un PEDIDO con estos productos.')) {
+        try {
+            const response = await fetch(`/api/cotizacion/${id}/estado`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ estado: 'aprobada' })
+            });
+            
+            const resultado = await response.json();
+            
+            if (resultado.success) {
+                alert('✅ Cotización aprobada exitosamente\n📦 Pedido creado automáticamente\n\nRevisa el módulo de PEDIDOS');
+                location.reload();
+            } else {
+                // Mostrar el error específico
+                if (resultado.error && resultado.error.includes('Ya existe')) {
+                    alert('⚠️ Esta cotización ya fue aprobada anteriormente.\n\nYa existe un pedido idéntico en el sistema.\n\nRevisa el módulo de PEDIDOS.');
+                } else {
+                    alert('❌ Error al aprobar la cotización: ' + (resultado.error || 'Error desconocido'));
+                }
+            }
+        } catch (error) {
+            alert('❌ Error al aprobar la cotización');
+            console.error(error);
+        }
+    }
+}
+
+async function rechazarCotizacion(id) {
+    if (confirm('¿Deseas regresar esta cotización a estado PENDIENTE?')) {
+        try {
+            const response = await fetch(`/api/cotizacion/${id}/estado`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ estado: 'pendiente' })
+            });
+            
+            const resultado = await response.json();
+            
+            if (resultado.success) {
+                alert('Cotización regresada a PENDIENTE');
+                location.reload();
+            } else {
+                alert('Error al cambiar el estado');
+            }
+        } catch (error) {
+            alert('Error al cambiar el estado');
+        }
+    }
 }
 </script>
 

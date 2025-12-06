@@ -8,71 +8,21 @@
         Administra los pedidos registrados, asigna fechas de entrega y controla su estado.
     </p>
 
-    <!-- FORMULARIO NUEVO PEDIDO -->
-    <div class="form-card">
-        <h3>Registrar nuevo pedido</h3>
-
-        <form action="/guardar_pedido" method="POST" class="formulario">
-
-            <div class="form-grupo">
-                <label>Cliente:</label>
-                <select name="id_cliente" required>
-                    <option value="" disabled selected>Selecciona un cliente</option>
-                    {% for c in clientes %}
-                    <option value="{{ c[0] }}">{{ c[1] }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-grupo">
-                <label>Producto (del Catálogo):</label>
-                <select name="id_combinacion" required>
-                    <option value="" disabled selected>Selecciona un diseño</option>
-                    {% for p in productos %}
-                    <option value="{{ p[0] }}">{{ p[1] }} ({{ p[2] }} - {{ p[3] }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="form-grupo">
-                <label>Cantidad:</label>
-                <input type="number" min="1" name="cantidad" required>
-            </div>
-
-            <div class="form-grupo">
-                <label>Fecha de entrega:</label>
-                <input type="date" name="fecha_entrega" required>
-            </div>
-
-            <div class="form-grupo">
-                <label>Estado:</label>
-                <select name="estado" required>
-                    <option value="pendiente">Pendiente</option>
-                    <option value="en_produccion">En producción</option>
-                    <option value="entregado">Entregado</option>
-                    <option value="cancelado">Cancelado</option>
-                </select>
-            </div>
-
-            <button type="submit" class="btn-guardar">Guardar Pedido</button>
-        </form>
-    </div>
-
-    <!-- LISTA DE PEDIDOS -->
+    <!-- LISTA DE PEDIDOS CON EDICIÓN RÁPIDA -->
     <div class="tabla-card">
-        <h3>Pedidos registrados</h3>
+        <h3>📋 Pedidos registrados</h3>
 
         <table class="tabla">
             <thead>
                 <tr>
-                    <th>ID</th>
+                    <th>ID Pedido</th>
                     <th>Cliente</th>
-                    <th>Producto</th>
                     <th>Cantidad</th>
-                    <th>Fecha pedido</th>
-                    <th>Fecha entrega</th>
-                    <th>Estado</th>
                     <th>Total</th>
+                    <th>Fecha Pedido</th>
+                    <th>Fecha Entrega</th>
+                    <th>Estado</th>
+                    <th>Guardar</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -80,29 +30,50 @@
             <tbody>
                 {% for p in pedidos %}
                 <tr>
-                    <td>#{{ p['id_pedido'] }}</td>
-                    <td>{{ p['nombre_cliente'] }}</td>
-                    <td>{{ p['nombre_producto'] }}</td>
-                    <td>{{ p['cantidad'] }}</td>
-                    <td>{{ p['fecha_pedido'][:10] if p['fecha_pedido'] else 'N/A' }}</td>
-                    <td>{{ p['fecha_entrega'] }}</td>
+                    <form method="POST" action="/actualizar_pedido/{{ p['id_pedido'] }}" class="form-inline-pedido">
+                        <td><strong>#{{ p['id_pedido'] }}</strong></td>
+                        <td>{{ p['nombre_cliente'] }}</td>
+                        <td>{{ p['cantidad'] }}</td>
+                        <td><strong>${{ "%.2f"|format(p['total']) }}</strong></td>
+                        <td>{{ p['fecha_pedido'][:10] if p['fecha_pedido'] else 'N/A' }}</td>
+                        
+                        <!-- ✅ FECHA DE ENTREGA EDITABLE -->
+                        <td>
+                            <input type="date" 
+                                   name="fecha_entrega" 
+                                   value="{{ p['fecha_entrega'] }}" 
+                                   class="input-fecha"
+                                   required>
+                        </td>
+
+                        <!-- ✅ ESTADO DEL PEDIDO EDITABLE -->
+                        <td>
+                            <select name="estado" class="select-estado {{ p['estado'] }}">
+                                <option value="pendiente" {% if p['estado']=='pendiente' %}selected{% endif %}>Pendiente</option>
+                                <option value="en_proceso" {% if p['estado']=='en_proceso' %}selected{% endif %}>En proceso</option>
+                                <option value="finalizado" {% if p['estado']=='finalizado' %}selected{% endif %}>Finalizado</option>
+                                <option value="entregado" {% if p['estado']=='entregado' %}selected{% endif %}>Entregado</option>
+                                <option value="cancelado" {% if p['estado']=='cancelado' %}selected{% endif %}>Cancelado</option>
+                            </select>
+                        </td>
+
+                        <!-- ✅ BOTÓN GUARDAR CAMBIOS -->
+                        <td>
+                            <button type="submit" class="btn-accion guardar" title="Guardar cambios">💾</button>
+                        </td>
+                    </form>
+
+                    <!-- ✅ BOTÓN ELIMINAR (FUERA DEL FORM) -->
                     <td>
-                        <span class="badge-estado {{ p['estado'] }}">
-                            {{ p['estado'].replace('_', ' ').title() }}
-                        </span>
-                    </td>
-                    <td>${{ "%.2f"|format(p['total']) }}</td>
-                    <td>
-                        <a href="/editar_pedido/{{ p['id_pedido'] }}" class="btn-accion editar" title="Editar">✏</a>
                         <a href="/eliminar_pedido/{{ p['id_pedido'] }}" 
                            class="btn-accion eliminar" 
                            onclick="return confirm('¿Eliminar este pedido?')"
-                           title="Eliminar">🗑</a>
+                           title="Eliminar">🗑️</a>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="9" class="sin-datos">No hay pedidos registrados</td>
+                    <td colspan="10" class="sin-datos">No hay pedidos registrados</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -200,8 +171,18 @@
     color: #856404;
 }
 
+.badge-estado.en_proceso {
+    background: #17a2b8;
+    color: white;
+}
+
 .badge-estado.en_produccion {
     background: #17a2b8;
+    color: white;
+}
+
+.badge-estado.finalizado {
+    background: #6f42c1;
     color: white;
 }
 
@@ -217,15 +198,119 @@
 
 .btn-accion {
     text-decoration: none;
-    padding: 0.25rem 0.5rem;
+    padding: 0.4rem 0.8rem;
     margin: 0 0.25rem;
     font-size: 1.2rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.3s;
+}
+
+.btn-accion.guardar {
+    background: #28a745;
+    color: white;
+}
+
+.btn-accion.guardar:hover {
+    background: #218838;
+    transform: scale(1.1);
+}
+
+.btn-accion.eliminar {
+    background: #dc3545;
+    color: white;
+    display: inline-block;
+}
+
+.btn-accion.eliminar:hover {
+    background: #c82333;
+    transform: scale(1.1);
+}
+
+/* Estilos para inputs en la tabla */
+.form-inline-pedido {
+    display: contents;
+}
+
+.input-fecha {
+    padding: 0.4rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 140px;
+    font-size: 0.9rem;
+}
+
+.select-estado {
+    padding: 0.4rem;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    width: 130px;
+}
+
+/* Colores para el select según el estado */
+.select-estado.pendiente {
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.select-estado.en_proceso {
+    border-color: #17a2b8;
+    color: #0c5460;
+}
+
+.select-estado.finalizado {
+    border-color: #6f42c1;
+    color: #4a148c;
+}
+
+.select-estado.entregado {
+    border-color: #28a745;
+    color: #155724;
+}
+
+.select-estado.cancelado {
+    border-color: #dc3545;
+    color: #721c24;
 }
 
 .sin-datos {
     text-align: center;
     color: #999;
     font-style: italic;
+    padding: 2rem !important;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .tabla {
+        font-size: 0.85rem;
+    }
+    
+    .input-fecha, .select-estado {
+        font-size: 0.8rem;
+    }
 }
 </style>
+
+<script>
+// Cambiar el color del select cuando se cambia el estado
+document.addEventListener('DOMContentLoaded', function() {
+    const selects = document.querySelectorAll('.select-estado');
+    
+    selects.forEach(select => {
+        select.addEventListener('change', function() {
+            // Remover todas las clases de estado
+            this.classList.remove('pendiente', 'en_proceso', 'finalizado', 'entregado', 'cancelado');
+            // Agregar la clase del nuevo estado
+            this.classList.add(this.value);
+        });
+    });
+});
+</script>
+
 {% endblock %}

@@ -4,12 +4,49 @@
     <meta charset="UTF-8">
     <title>ChromaBags</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        /* Botón de salir */
+        .btn-salir {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 0.8rem 1.2rem;
+            margin-top: 1rem;
+            color: white;
+            background: #ff4d6d;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            border: none;
+        }
+        .btn-salir:hover {
+            background: #d90429;
+        }
+
+        /* Fade-out overlay */
+        #fade-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #ffeff4; /* Rosa suave */
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease-in-out;
+            z-index: 9999;
+        }
+    </style>
 </head>
+
 <body>
+    <!-- Capa para animación -->
+    <div id="fade-overlay"></div>
+
     <div class="layout">
         <!-- Barra lateral -->
         <aside class="sidebar">
             <h2 class="logo">CHROMABAGS</h2>
+
             <nav>
                 <ul>
                     <li><a href="{{ url_for('diseno_color') }}" class="{% if request.path == '/diseno_color' %}activo{% endif %}">Diseño & colores</a></li>
@@ -19,12 +56,17 @@
                     <li><a href="{{ url_for('cotizacion') }}" class="{% if request.path == '/cotizacion' %}activo{% endif %}">Cotización</a></li>
                     <li><a href="{{ url_for('inventario') }}" class="{% if request.path == '/inventario' %}activo{% endif %}">Inventario</a></li>
                     <li><a href="{{ url_for('pedidos') }}" class="{% if request.path == '/pedidos' %}activo{% endif %}">Pedidos</a></li>
-                    
+                    <li><a href="{{ url_for('pagos') }}" class="{% if request.path == '/pagos' %}activo{% endif %}">Pagos</a></li>
+                    <li><a href="{{ url_for('facturacion') }}" class="{% if request.path == '/facturacion' %}activo{% endif %}">Facturación</a></li>
                     <li><a href="{{ url_for('reportes') }}" class="{% if request.path == '/reportes' %}activo{% endif %}">Reportes</a></li>
                     <li><a href="{{ url_for('respaldo') }}" class="{% if request.path == '/respaldo' %}activo{% endif %}">Respaldo</a></li>
                 </ul>
             </nav>
+
+            <!-- Botón SALIR -->
+            <button onclick="cerrarApp()" class="btn-salir">Salir</button>
         </aside>
+
         <!-- Contenido principal -->
         <main class="contenido">
             <header class="encabezado">
@@ -35,5 +77,38 @@
             </section>
         </main>
     </div>
+
+    <!-- Scripts generales -->
+    <script>
+        // Llamado desde el botón "Salir"
+        function cerrarApp() {
+            // Activa el fade-out
+            iniciarFadeOut();
+
+            // Retraso pequeño para ver la animación
+            setTimeout(() => {
+                if (window.pywebview) {
+                    window.pywebview.api.cerrar_aplicacion();
+                } else {
+                    alert("Solo disponible en la aplicación de escritorio.");
+                }
+            }, 300);
+        }
+
+        // Animación suave antes de cerrar
+        function iniciarFadeOut() {
+            const layer = document.getElementById("fade-overlay");
+            layer.style.opacity = "1";   // Activa el fade
+        }
+
+        async function cerrarApp() {
+            if (!confirm("¿Deseas cerrar ChromaBags?")) return;
+
+            iniciarFadeOut();
+            setTimeout(() => window.pywebview.api.cerrar_aplicacion(), 300);
+        }
+
+    </script>
+
 </body>
 </html>

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="dashboard-titulo">Módulo de Pagos</h2>
+<p class="dashboard-sub">Registra los pagos de pedidos finalizados</p>
+
+<div class="pago-box">
+  <table>
+    <thead>
+      <tr>
+        <th>ID Pedido</th>
+        <th>Cliente</th>
+        <th>Total Pedido</th>
+        <th>Total Pagado</th>
+        <th>Falta por Pagar</th>
+        <th>Estado</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      {% for p in pagos %}
+      <tr class="{% if p.estado == 'pagado' %}fila-pagada{% endif %}">
+        <td><strong>#{{ p.id_pedido }}</strong></td>
+        <td>{{ p.nombre_cliente }}</td>
+        <td><strong>${{ "%.2f"|format(p.total) }}</strong></td>
+        <td class="texto-pagado">${{ "%.2f"|format(p.total_pagado) }}</td>
+        <td class="texto-faltante">
+          {% if p.falta_pagar > 0 %}
+            <strong style="color: #d32f2f;">${{ "%.2f"|format(p.falta_pagar) }}</strong>
+          {% else %}
+            <span style="color: #388e3c;">$0.00</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if p.estado == 'pagado' %}
+            <span class="badge-pago pagado">✅ Pagado Completo</span>
+          {% else %}
+            <span class="badge-pago pendiente">⏳ Pago Pendiente</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if p.estado != 'pagado' %}
+          <form method="POST" action="{{ url_for('registrar_pago', id_pedido=p.id_pedido) }}" style="display: flex; gap: 8px; align-items: center;">
+            <select name="metodo" required>
+              <option value="" disabled selected>Método</option>
+              <option value="efectivo">💵 Efectivo</option>
+              <option value="transferencia">🏦 Transferencia</option>
+              <option value="tarjeta">💳 Tarjeta</option>
+            </select>
+
+            <input type="number" step="0.01" name="monto" placeholder="Monto $" min="0.01" max="{{ p.falta_pagar }}" required>
+
+            <button class="btn-pago" type="submit">💰 Registrar Pago</button>
+          </form>
+          {% else %}
+            <span style="color: #388e3c; font-weight: 600;">✅ Completado</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="sin-datos">No hay pedidos finalizados pendientes de pago</td>
+      </tr>
+      {% endfor %}
+
+    </tbody>
+  </table>
+</div>
+
+<!-- Historial de pagos -->
+<div class="pago-box" style="margin-top: 30px;">
+  <h3 style="color: #4a148c; margin-bottom: 15px;">📜 Historial de Pagos</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>ID Pago</th>
+        <th>Pedido</th>
+        <th>Cliente</th>
+        <th>Monto</th>
+        <th>Método</th>
+        <th>Fecha</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in historial %}
+      <tr>
+        <td><strong>#{{ h.id_pago }}</strong></td>
+        <td>#{{ h.id_pedido }}</td>
+        <td>{{ h.nombre_cliente }}</td>
+        <td><strong>${{ "%.2f"|format(h.monto) }}</strong></td>
+        <td>
+          {% if h.metodo == 'efectivo' %}💵 Efectivo
+          {% elif h.metodo == 'transferencia' %}🏦 Transferencia
+          {% elif h.metodo == 'tarjeta' %}💳 Tarjeta
+          {% else %}{{ h.metodo }}{% endif %}
+        </td>
+        <td>{{ h.fecha_pago[:16] if h.fecha_pago else 'N/A' }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" class="sin-datos">No hay pagos registrados</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+.fila-pagada {
+  background-color: #f1f8f4;
+}
+
+.texto-pagado {
+  color: #388e3c;
+  font-weight: 600;
+}
+
+.sin-datos {
+  text-align: center;
+  padding: 30px;
+  color: #999;
+  font-style: italic;
+}
+</style>
+
+{% endblock %}

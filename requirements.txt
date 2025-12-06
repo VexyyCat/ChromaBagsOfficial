@@ -1,3 +1,8 @@
 # To ensure app dependencies are ported from your virtual environment/host machine into your container, run 'pip freeze > requirements.txt' in the terminal to overwrite this file
 Flask==3.0.3
 gunicorn==23.0.0
+reportlab==4.0.7
+Werkzeug==3.0.1
+openpyxl==3.1.2
+pywebview==4.4.1
+python-dateutil==2.8.2

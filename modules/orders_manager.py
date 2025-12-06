@@ -44,15 +44,18 @@ class OrdersManager:
             
             subtotal = precio_unitario * cantidad
             
+            # Obtener fecha actual
+            fecha_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
             # Insertar pedido
             cur.execute("""
-                INSERT INTO pedidos (id_cliente, fecha_entrega, estado, total)
-                VALUES (?, ?, ?, ?)
-            """, (id_cliente, fecha_entrega, estado, subtotal))
+                INSERT INTO pedidos (id_cliente, fecha_pedido, fecha_entrega, estado, total)
+                VALUES (?, ?, ?, ?, ?)
+            """, (id_cliente, fecha_actual, fecha_entrega, estado, subtotal))
             
             id_pedido = cur.lastrowid
             
-            # Insertar detalle del pedido (guardamos id_combinacion en id_producto temporalmente)
+            # Insertar detalle del pedido
             cur.execute("""
                 INSERT INTO detalle_pedido (id_pedido, id_producto, cantidad, precio_unitario, subtotal)
                 VALUES (?, ?, ?, ?, ?)
@@ -65,6 +68,10 @@ class OrdersManager:
             return {'success': True, 'id_pedido': id_pedido, 'total': subtotal}
         
         except Exception as e:
+            print(f"Error creando pedido: {e}")
+            if conn:
+                conn.rollback()
+                conn.close()
             return {'success': False, 'error': str(e)}
     
     @staticmethod
@@ -81,16 +88,16 @@ class OrdersManager:
             
             cur.execute("""
                 SELECT p.id_pedido, 
-                       c.nombre_cliente,
-                       comb.nombre_guardado,
+                       COALESCE(c.nombre_cliente, 'Cliente Eliminado'),
+                       COALESCE(comb.nombre_guardado, 'Producto sin nombre'),
                        p.fecha_pedido,
                        p.fecha_entrega,
                        p.estado,
                        p.total,
                        dp.cantidad
                 FROM pedidos p
-                JOIN clientes c ON p.id_cliente = c.id_cliente
-                JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido
+                LEFT JOIN clientes c ON p.id_cliente = c.id_cliente
+                LEFT JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido
                 LEFT JOIN combinaciones comb ON dp.id_producto = comb.id_combinacion
                 ORDER BY p.id_pedido DESC
             """)
@@ -100,12 +107,12 @@ class OrdersManager:
                 pedidos.append({
                     'id_pedido': row[0],
                     'nombre_cliente': row[1],
-                    'nombre_producto': row[2] or 'Producto sin nombre',
+                    'nombre_producto': row[2],
                     'fecha_pedido': row[3],
                     'fecha_entrega': row[4],
                     'estado': row[5],
                     'total': row[6],
-                    'cantidad': row[7]
+                    'cantidad': row[7] or 0
                 })
             
             cur.close()
@@ -130,10 +137,13 @@ class OrdersManager:
             cur = conn.cursor()
             
             cur.execute("""
-                SELECT p.*, c.nombre_cliente, comb.nombre_guardado, dp.cantidad
+                SELECT p.*, 
+                       COALESCE(c.nombre_cliente, 'Cliente Eliminado'), 
+                       COALESCE(comb.nombre_guardado, 'Producto sin nombre'), 
+                       dp.cantidad
                 FROM pedidos p
-                JOIN clientes c ON p.id_cliente = c.id_cliente
-                JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido
+                LEFT JOIN clientes c ON p.id_cliente = c.id_cliente
+                LEFT JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido
                 LEFT JOIN combinaciones comb ON dp.id_producto = comb.id_combinacion
                 WHERE p.id_pedido = ?
             """, (id_pedido,))
@@ -151,8 +161,8 @@ class OrdersManager:
                     'estado': pedido[4],
                     'total': pedido[5],
                     'nombre_cliente': pedido[6],
-                    'nombre_producto': pedido[7] or 'Producto sin nombre',
-                    'cantidad': pedido[8]
+                    'nombre_producto': pedido[7],
+                    'cantidad': pedido[8] or 0
                 }
             
             return None
@@ -186,6 +196,10 @@ class OrdersManager:
             return {'success': True}
         
         except Exception as e:
+            print(f"Error actualizando pedido: {e}")
+            if conn:
+                conn.rollback()
+                conn.close()
             return {'success': False, 'error': str(e)}
     
     @staticmethod
@@ -203,6 +217,12 @@ class OrdersManager:
             # Eliminar detalles primero
             cur.execute("DELETE FROM detalle_pedido WHERE id_pedido = ?", (id_pedido,))
             
+            # Eliminar pagos asociados si existen
+            try:
+                cur.execute("DELETE FROM pagos WHERE id_pedido = ?", (id_pedido,))
+            except:
+                pass
+            
             # Eliminar pedido
             cur.execute("DELETE FROM pedidos WHERE id_pedido = ?", (id_pedido,))
             
@@ -213,6 +233,10 @@ class OrdersManager:
             return {'success': True}
         
         except Exception as e:
+            print(f"Error eliminando pedido: {e}")
+            if conn:
+                conn.rollback()
+                conn.close()
             return {'success': False, 'error': str(e)}
     
     @staticmethod
@@ -226,28 +250,41 @@ class OrdersManager:
         
         try:
             cur = conn.cursor()
+            fecha_actual = datetime.now().strftime('%Y-%m-%d')
             
-            # Pedidos POR ENTREGAR
+            # Pedidos POR ENTREGAR (pendientes, en proceso, finalizados - NO entregados ni cancelados)
+            # Y que su fecha de entrega sea hoy o futura
             cur.execute("""
-                SELECT p.id_pedido, c.nombre_cliente, comb.nombre_guardado,
-                       p.fecha_pedido, p.fecha_entrega, p.estado, p.total
+                SELECT p.id_pedido, 
+                       COALESCE(c.nombre_cliente, 'Cliente Eliminado'), 
+                       COALESCE(comb.nombre_guardado, 'Producto sin nombre'),
+                       p.fecha_pedido, 
+                       p.fecha_entrega, 
+                       p.estado, 
+                       p.total
                 FROM pedidos p
-                JOIN clientes c ON p.id_cliente = c.id_cliente
-                JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido
+                LEFT JOIN clientes c ON p.id_cliente = c.id_cliente
+                LEFT JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido
                 LEFT JOIN combinaciones comb ON dp.id_producto = comb.id_combinacion
-                WHERE p.estado IN ('pendiente', 'en_produccion')
+                WHERE p.estado IN ('pendiente', 'en_proceso', 'finalizado')
+                AND p.fecha_entrega >= ?
                 GROUP BY p.id_pedido
                 ORDER BY p.fecha_entrega ASC
-            """)
+            """, (fecha_actual,))
             por_entregar = cur.fetchall()
             
             # Pedidos ENTREGADOS
             cur.execute("""
-                SELECT p.id_pedido, c.nombre_cliente, comb.nombre_guardado,
-                       p.fecha_pedido, p.fecha_entrega, p.estado, p.total
+                SELECT p.id_pedido, 
+                       COALESCE(c.nombre_cliente, 'Cliente Eliminado'), 
+                       COALESCE(comb.nombre_guardado, 'Producto sin nombre'),
+                       p.fecha_pedido, 
+                       p.fecha_entrega, 
+                       p.estado, 
+                       p.total
                 FROM pedidos p
-                JOIN clientes c ON p.id_cliente = c.id_cliente
-                JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido
+                LEFT JOIN clientes c ON p.id_cliente = c.id_cliente
+                LEFT JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido
                 LEFT JOIN combinaciones comb ON dp.id_producto = comb.id_combinacion
                 WHERE p.estado = 'entregado'
                 GROUP BY p.id_pedido
@@ -255,28 +292,38 @@ class OrdersManager:
             """)
             entregados = cur.fetchall()
             
-            # Pedidos VENCIDOS
+            # Pedidos VENCIDOS (fecha pasada y NO entregados ni cancelados)
             cur.execute("""
-                SELECT p.id_pedido, c.nombre_cliente, comb.nombre_guardado,
-                       p.fecha_pedido, p.fecha_entrega, p.estado, p.total
+                SELECT p.id_pedido, 
+                       COALESCE(c.nombre_cliente, 'Cliente Eliminado'), 
+                       COALESCE(comb.nombre_guardado, 'Producto sin nombre'),
+                       p.fecha_pedido, 
+                       p.fecha_entrega, 
+                       p.estado, 
+                       p.total
                 FROM pedidos p
-                JOIN clientes c ON p.id_cliente = c.id_cliente
-                JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido
+                LEFT JOIN clientes c ON p.id_cliente = c.id_cliente
+                LEFT JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido
                 LEFT JOIN combinaciones comb ON dp.id_producto = comb.id_combinacion
-                WHERE p.fecha_entrega < DATE('now')
-                AND p.estado != 'entregado'
+                WHERE p.fecha_entrega < ?
+                AND p.estado NOT IN ('entregado', 'cancelado')
                 GROUP BY p.id_pedido
                 ORDER BY p.fecha_entrega ASC
-            """)
+            """, (fecha_actual,))
             vencidos = cur.fetchall()
             
-            # TODOS
+            # TODOS los pedidos
             cur.execute("""
-                SELECT p.id_pedido, c.nombre_cliente, comb.nombre_guardado,
-                       p.fecha_pedido, p.fecha_entrega, p.estado, p.total
+                SELECT p.id_pedido, 
+                       COALESCE(c.nombre_cliente, 'Cliente Eliminado'), 
+                       COALESCE(comb.nombre_guardado, 'Producto sin nombre'),
+                       p.fecha_pedido, 
+                       p.fecha_entrega, 
+                       p.estado, 
+                       p.total
                 FROM pedidos p
-                JOIN clientes c ON p.id_cliente = c.id_cliente
-                JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido
+                LEFT JOIN clientes c ON p.id_cliente = c.id_cliente
+                LEFT JOIN detalle_pedido dp ON p.id_pedido = dp.id_pedido
                 LEFT JOIN combinaciones comb ON dp.id_producto = comb.id_combinacion
                 GROUP BY p.id_pedido
                 ORDER BY p.id_pedido DESC
@@ -286,6 +333,8 @@ class OrdersManager:
             cur.close()
             conn.close()
             
+            print(f"📊 REPORTES - Por entregar: {len(por_entregar)}, Entregados: {len(entregados)}, Vencidos: {len(vencidos)}, Todos: {len(todos)}")
+            
             return {
                 'por_entregar': por_entregar,
                 'entregados': entregados,
@@ -294,7 +343,9 @@ class OrdersManager:
             }
         
         except Exception as e:
-            print(f"Error obteniendo pedidos por estado: {e}")
+            print(f"❌ Error obteniendo pedidos por estado: {e}")
+            import traceback
+            traceback.print_exc()
             return {'por_entregar': [], 'entregados': [], 'vencidos': [], 'todos': []}
     
     @staticmethod
@@ -309,8 +360,8 @@ class OrdersManager:
         try:
             cur = conn.cursor()
             
-            # Total de pedidos
-            cur.execute("SELECT COUNT(*) FROM pedidos")
+            # Total de pedidos (sin incluir cancelados)
+            cur.execute("SELECT COUNT(*) FROM pedidos WHERE estado != 'cancelado'")
             total_pedidos = cur.fetchone()[0] or 0
             
             # Pedidos por estado
@@ -326,39 +377,43 @@ class OrdersManager:
                     'monto': row[2] or 0
                 }
             
-            # Ingresos totales
-            cur.execute("SELECT SUM(total) FROM pedidos WHERE estado = 'entregado'")
+            # Ingresos totales (solo entregados)
+            cur.execute("SELECT COALESCE(SUM(total), 0) FROM pedidos WHERE estado = 'entregado'")
             ingresos_totales = cur.fetchone()[0] or 0
             
             # Pedidos del mes actual
             cur.execute("""
-                SELECT COUNT(*), SUM(total)
+                SELECT COUNT(*), COALESCE(SUM(total), 0)
                 FROM pedidos
                 WHERE strftime('%Y-%m', fecha_pedido) = strftime('%Y-%m', 'now')
+                AND estado != 'cancelado'
             """)
             mes_actual = cur.fetchone()
             pedidos_mes = mes_actual[0] or 0
             ingresos_mes = mes_actual[1] or 0
             
-            # Clientes activos (con al menos un pedido)
+            # Clientes activos (que tienen al menos un pedido)
             cur.execute("""
-                SELECT COUNT(DISTINCT id_cliente) FROM pedidos
+                SELECT COUNT(DISTINCT id_cliente) 
+                FROM pedidos 
+                WHERE estado != 'cancelado'
             """)
             clientes_activos = cur.fetchone()[0] or 0
             
-            # Productos más vendidos (ahora combinaciones)
+            # Productos más vendidos
             cur.execute("""
                 SELECT 
                     COALESCE(comb.nombre_guardado, 'Diseño sin nombre') as nombre,
                     SUM(dp.cantidad) as total_vendido
                 FROM detalle_pedido dp
+                LEFT JOIN pedidos p ON dp.id_pedido = p.id_pedido
                 LEFT JOIN combinaciones comb ON dp.id_producto = comb.id_combinacion
+                WHERE p.estado != 'cancelado'
                 GROUP BY dp.id_producto
                 HAVING total_vendido > 0
                 ORDER BY total_vendido DESC
                 LIMIT 5
             """)
-            # Convertir Row a lista de tuplas
             productos_top = [tuple(row) for row in cur.fetchall()]
             
             # Ventas por mes (últimos 6 meses)
@@ -366,19 +421,19 @@ class OrdersManager:
                 SELECT 
                     strftime('%Y-%m', fecha_pedido) as mes,
                     COUNT(*) as pedidos,
-                    SUM(total) as ventas
+                    COALESCE(SUM(total), 0) as ventas
                 FROM pedidos
                 WHERE fecha_pedido >= date('now', '-6 months')
+                AND estado != 'cancelado'
                 GROUP BY mes
-                ORDER BY mes
+                ORDER BY mes ASC
             """)
-            # Convertir Row a lista de tuplas
             ventas_mensuales = [tuple(row) for row in cur.fetchall()]
             
             cur.close()
             conn.close()
             
-            return {
+            estadisticas = {
                 'total_pedidos': total_pedidos,
                 'por_estado': por_estado,
                 'ingresos_totales': ingresos_totales,
@@ -388,9 +443,11 @@ class OrdersManager:
                 'productos_top': productos_top if productos_top else [],
                 'ventas_mensuales': ventas_mensuales if ventas_mensuales else []
             }
+            
+            return estadisticas
         
         except Exception as e:
-            print(f"Error obteniendo estadísticas: {e}")
+            print(f"❌ Error obteniendo estadísticas: {e}")
             import traceback
             traceback.print_exc()
             return {

@@ -6,6 +6,7 @@ import os
 from db_connection import get_connection
 from modules.db_helpers import insertar_datos_ejemplo
 
+# ========================= VERIFICAR ESTRUCTURA =========================
 def verificar_estructura_db():
     """
     Verifica que todas las tablas necesarias existan
@@ -21,7 +22,9 @@ def verificar_estructura_db():
         tablas_requeridas = [
             'clientes', 'modelos_bolsas', 'colores', 
             'paletas_colores', 'combinaciones', 
-            'productos_terminados', 'materiales'
+            'productos_terminados', 'materiales',
+            'cotizaciones', 'detalle_cotizacion',
+            'pedidos', 'detalle_pedido', 'pagos', 'facturas'
         ]
         
         cur.execute("""
@@ -47,13 +50,176 @@ def verificar_estructura_db():
         if todas_ok:
             print("✅ Todas las tablas requeridas existen")
         else:
-            print("⚠️  Algunas tablas faltan. Verifica tu archivo .db")
+            print("⚠️  Algunas tablas faltan. Se crearán ahora...")
         
         return todas_ok
     
     finally:
         conn.close()
 
+# ========================= ACTUALIZAR CLIENTES =========================
+def actualizar_tabla_clientes():
+    """
+    Agrega columnas de datos fiscales a la tabla clientes
+    """
+    conn = get_connection()
+    if not conn:
+        return False
+    
+    cur = conn.cursor()
+    
+    print("\n🔧 Actualizando tabla clientes con campos fiscales...")
+    
+    columnas_fiscales = [
+        ("rfc", "TEXT"),
+        ("razon_social", "TEXT"),
+        ("uso_cfdi", "TEXT"),
+        ("regimen_fiscal", "TEXT"),
+        ("correo_facturacion", "TEXT")
+    ]
+    
+    for columna, tipo in columnas_fiscales:
+        try:
+            cur.execute(f"ALTER TABLE clientes ADD COLUMN {columna} {tipo};")
+            print(f"  ✅ Columna '{columna}' agregada")
+        except Exception as e:
+            if "duplicate column" in str(e).lower():
+                print(f"  ℹ️  Columna '{columna}' ya existe")
+            else:
+                print(f"  ⚠️  Error con '{columna}': {e}")
+    
+    conn.commit()
+    conn.close()
+    print("✅ Tabla clientes actualizada")
+    return True
+
+# ========================= CREAR TABLAS =========================
+def crear_tablas():
+    """
+    Crea todas las tablas necesarias del sistema
+    """
+    conn = get_connection()
+    if not conn:
+        return False
+    
+    cur = conn.cursor()
+    
+    print("\n🧱 Creando tablas del sistema...")
+
+    # -------- COTIZACIONES --------
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS cotizaciones (
+                id_cotizacion INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_cliente INTEGER NOT NULL,
+                fecha_emision TEXT DEFAULT (datetime('now','localtime')),
+                total_estimado REAL NOT NULL,
+                estado TEXT DEFAULT 'pendiente',
+                FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
+            );
+        """)
+        print("  ✅ Tabla 'cotizaciones' lista")
+    except Exception as e:
+        print(f"  ⚠️  Error con 'cotizaciones': {e}")
+
+    # -------- DETALLE_COTIZACION --------
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS detalle_cotizacion (
+                id_detalle INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_cotizacion INTEGER NOT NULL,
+                id_material INTEGER NOT NULL,
+                cantidad INTEGER NOT NULL,
+                costo_unitario REAL NOT NULL,
+                subtotal REAL NOT NULL,
+                FOREIGN KEY (id_cotizacion) REFERENCES cotizaciones(id_cotizacion)
+            );
+        """)
+        print("  ✅ Tabla 'detalle_cotizacion' lista")
+    except Exception as e:
+        print(f"  ⚠️  Error con 'detalle_cotizacion': {e}")
+
+    # -------- PEDIDOS --------
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pedidos (
+                id_pedido INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_cliente INTEGER NOT NULL,
+                fecha_pedido TEXT DEFAULT (datetime('now','localtime')),
+                fecha_entrega TEXT,
+                estado TEXT DEFAULT 'pendiente',
+                total REAL NOT NULL,
+                FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
+            );
+        """)
+        print("  ✅ Tabla 'pedidos' lista")
+    except Exception as e:
+        print(f"  ⚠️  Error con 'pedidos': {e}")
+
+    # -------- DETALLE_PEDIDO --------
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS detalle_pedido (
+                id_detalle INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_pedido INTEGER NOT NULL,
+                id_producto INTEGER NOT NULL,
+                cantidad INTEGER NOT NULL,
+                precio_unitario REAL NOT NULL,
+                subtotal REAL NOT NULL,
+                FOREIGN KEY (id_pedido) REFERENCES pedidos(id_pedido)
+            );
+        """)
+        print("  ✅ Tabla 'detalle_pedido' lista")
+    except Exception as e:
+        print(f"  ⚠️  Error con 'detalle_pedido': {e}")
+
+    # -------- PAGOS --------
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pagos (
+                id_pago INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_pedido INTEGER NOT NULL,
+                fecha_pago TEXT DEFAULT (datetime('now','localtime')),
+                monto REAL NOT NULL,
+                metodo TEXT NOT NULL,
+                referencia TEXT,
+                observaciones TEXT,
+                FOREIGN KEY (id_pedido) REFERENCES pedidos(id_pedido)
+            );
+        """)
+        print("  ✅ Tabla 'pagos' lista")
+    except Exception as e:
+        print(f"  ⚠️  Error con 'pagos': {e}")
+
+    # -------- FACTURAS --------
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS facturas (
+                id_factura INTEGER PRIMARY KEY AUTOINCREMENT,
+                id_pedido INTEGER NOT NULL,
+                fecha_factura TEXT DEFAULT (datetime('now','localtime')),
+                folio TEXT NOT NULL,
+                total REAL NOT NULL,
+                rfc TEXT NOT NULL,
+                razon_social TEXT NOT NULL,
+                uso_cfdi TEXT NOT NULL,
+                regimen_fiscal TEXT NOT NULL,
+                correo_facturacion TEXT NOT NULL,
+                estado TEXT DEFAULT 'emitida',
+                ruta_pdf TEXT,
+                FOREIGN KEY (id_pedido) REFERENCES pedidos(id_pedido)
+            );
+        """)
+        print("  ✅ Tabla 'facturas' lista")
+    except Exception as e:
+        print(f"  ⚠️  Error con 'facturas': {e}")
+
+    conn.commit()
+    conn.close()
+    print("✅ Todas las tablas creadas correctamente")
+    return True
+
+# ========================= CONTAR REGISTROS =========================
 def contar_registros():
     """
     Cuenta registros en las tablas principales
@@ -74,7 +240,11 @@ def contar_registros():
             ('paletas_colores', 'Paletas de colores'),
             ('colores', 'Colores'),
             ('combinaciones', 'Combinaciones guardadas'),
-            ('productos_terminados', 'Productos en catálogo')
+            ('productos_terminados', 'Productos en catálogo'),
+            ('cotizaciones', 'Cotizaciones'),
+            ('pedidos', 'Pedidos'),
+            ('pagos', 'Pagos registrados'),
+            ('facturas', 'Facturas emitidas')
         ]
         
         for tabla, nombre in tablas:
@@ -83,7 +253,7 @@ def contar_registros():
                 count = cur.fetchone()[0]
                 print(f"  {nombre}: {count} registros")
             except Exception as e:
-                print(f"  {nombre}: Error - {e}")
+                print(f"  {nombre}: Tabla no existe")
         
         print("-" * 50)
     
@@ -165,39 +335,49 @@ def main():
         print("\n❌ Error: Problemas con permisos del sistema")
         return
     
-    # 2. Verificar estructura
+    # 2. Actualizar tabla clientes con campos fiscales
+    print("\n🔄 Actualizando estructura de la base de datos...")
+    actualizar_tabla_clientes()
+    
+    # 3. Crear tablas nuevas (pagos, facturas, etc.)
+    crear_tablas()
+    
+    # 4. Verificar estructura
     if not verificar_estructura_db():
         print("\n⚠️  Advertencia: La estructura de la BD está incompleta")
         print("   Asegúrate de que el archivo ChromaBags.db es correcto")
-        return
     
-    # 3. Contar registros existentes
+    # 5. Contar registros existentes
     contar_registros()
     
-    # 4. Preguntar si insertar datos de ejemplo
+    # 6. Preguntar si insertar datos de ejemplo
     conn = get_connection()
     if conn:
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM modelos_bolsas")
-        count = cur.fetchone()[0]
-        conn.close()
-        
-        if count == 0:
-            print("\n💡 No se encontraron modelos de bolsas.")
-            respuesta = input("¿Deseas insertar datos de ejemplo? (s/n): ")
-            if respuesta.lower() == 's':
-                inicializar_datos_base()
-                contar_registros()
-        else:
-            print("\n✅ La base de datos ya tiene datos iniciales")
+        try:
+            cur.execute("SELECT COUNT(*) FROM modelos_bolsas")
+            count = cur.fetchone()[0]
+            conn.close()
+            
+            if count == 0:
+                print("\n💡 No se encontraron modelos de bolsas.")
+                respuesta = input("¿Deseas insertar datos de ejemplo? (s/n): ")
+                if respuesta.lower() == 's':
+                    inicializar_datos_base()
+                    contar_registros()
+            else:
+                print("\n✅ La base de datos ya tiene datos iniciales")
+        except Exception as e:
+            print(f"\n⚠️  Error verificando datos: {e}")
+            conn.close()
     
     print("\n" + "=" * 50)
     print("   ✅ INICIALIZACIÓN COMPLETADA")
     print("=" * 50)
     print("\n📌 Próximos pasos:")
     print("   1. Ejecuta: python app.py")
-    print("   2. Abre: http://127.0.0.1:5050/diseno_color")
-    print("   3. Comienza a diseñar tus bolsas!")
+    print("   2. Abre: http://127.0.0.1:5050")
+    print("   3. ¡Comienza a gestionar ChromaBags!")
     print("\n")
 
 if __name__ == "__main__":

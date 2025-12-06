@@ -306,3 +306,62 @@ class InventoryManager:
         
         except Exception as e:
             return {'success': False, 'error': str(e)}
+        
+    @staticmethod
+    def obtener_material_por_id(id_material):
+        conn = get_connection()
+        if not conn:
+            return None
+
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id_material, nombre_material, tipo, unidad_medida, 
+                    costo_unitario, descripcion
+                FROM materiales
+                WHERE id_material = ?
+            """, (id_material,))
+
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+
+            if not row:
+                return None
+
+            return {
+                'id_material': row[0],
+                'nombre_material': row[1],
+                'tipo': row[2],
+                'unidad_medida': row[3],
+                'costo_unitario': row[4],
+                'descripcion': row[5]
+            }
+
+        except Exception as e:
+            print("Error obteniendo material:", e)
+            return None
+
+    @staticmethod
+    def modificar_material(id_material, nombre, tipo, unidad_medida, costo_unitario, descripcion):
+        conn = get_connection()
+        if not conn:
+            return {'success': False, 'error': 'Error de conexión a BD'}
+
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE materiales
+                SET nombre_material=?, tipo=?, unidad_medida=?, 
+                    costo_unitario=?, descripcion=?
+                WHERE id_material=?
+            """, (nombre, tipo, unidad_medida, costo_unitario, descripcion, id_material))
+
+            conn.commit()
+            cur.close()
+            conn.close()
+
+            return {'success': True}
+
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
