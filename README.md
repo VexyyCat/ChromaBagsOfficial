@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![ChromaBags Logo](static/images/logo_.png)
+![ChromaBags Logo](static/images/logo_chromabags.png)
 
 **Sistema completo de gestión empresarial para confeccionistas de bolsas**
 
