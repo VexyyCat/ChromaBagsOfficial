@@ -1021,12 +1021,14 @@ def registrar_pago(id_pedido):
 # ==================== FACTURACIÓN ====================
 @app.route('/facturacion')
 def facturacion():
-    """Muestra pedidos pagados (finalizados) listos para facturar"""
+    """Muestra pedidos completamente pagados listos para facturar"""
     conn = get_connection()
     pedidos_pagados = []
     
     if conn:
         cur = conn.cursor()
+        
+        # Obtener pedidos finalizados o entregados
         cur.execute("""
             SELECT 
                 p.id_pedido,
@@ -1036,19 +1038,34 @@ def facturacion():
                 p.fecha_pedido
             FROM pedidos p
             JOIN clientes c ON p.id_cliente = c.id_cliente
-            WHERE p.estado = 'finalizado' OR p.estado = 'entregado'
-            ORDER BY p.fecha_pedido DESC
+            WHERE p.estado IN ('finalizado', 'entregado')
         """)
         
-        rows = cur.fetchall()
-        for row in rows:
-            pedidos_pagados.append({
-                'id_pedido': row[0],
-                'nombre_cliente': row[1],
-                'total': row[2],
-                'estado': row[3],
-                'fecha_pedido': row[4]
-            })
+        pedidos = cur.fetchall()
+        
+        # Verificar cuáles están completamente pagados
+        for pedido in pedidos:
+            id_pedido = pedido[0]
+            total_pedido = pedido[2]
+            
+            # Calcular total pagado
+            cur.execute("""
+                SELECT COALESCE(SUM(monto), 0)
+                FROM pagos
+                WHERE id_pedido = ?
+            """, (id_pedido,))
+            
+            total_pagado = cur.fetchone()[0]
+            
+            # Solo incluir si está completamente pagado
+            if total_pagado >= total_pedido:
+                pedidos_pagados.append({
+                    'id_pedido': pedido[0],
+                    'nombre_cliente': pedido[1],
+                    'total': pedido[2],
+                    'estado': pedido[3],
+                    'fecha_pedido': pedido[4]
+                })
         
         cur.close()
         conn.close()

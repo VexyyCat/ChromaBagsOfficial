@@ -1,6 +1,0 @@
-services:
-  chromabags:
-    image: chromabags
-    build:
-      context: .
-      dockerfile: ./Dockerfile

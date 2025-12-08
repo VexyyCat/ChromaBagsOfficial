@@ -202,8 +202,7 @@ class QuotationManager:
             
             # Si se va a aprobar, verificar que no exista ya un pedido
             if nuevo_estado == 'aprobada':
-                # Verificar si ya existe un pedido para esta cotización
-                # Buscamos pedidos que tengan los mismos productos y cliente
+                # Obtener datos de la cotización
                 cur.execute("""
                     SELECT id_cliente, total_estimado
                     FROM cotizaciones
@@ -218,7 +217,7 @@ class QuotationManager:
                     
                     # Obtener los productos de esta cotización
                     cur.execute("""
-                        SELECT id_material, cantidad
+                        SELECT id_material, cantidad, costo_unitario
                         FROM detalle_cotizacion
                         WHERE id_cotizacion = ?
                         ORDER BY id_material
@@ -226,47 +225,62 @@ class QuotationManager:
                     
                     productos_cotizacion = cur.fetchall()
                     
-                    # Buscar si ya existe un pedido con estos mismos productos y cliente
+                    if not productos_cotizacion:
+                        cur.close()
+                        conn.close()
+                        return {'success': False, 'error': 'Cotización sin productos'}
+                    
+                    # Buscar pedidos del mismo cliente con el mismo total
                     cur.execute("""
                         SELECT p.id_pedido
                         FROM pedidos p
                         WHERE p.id_cliente = ?
-                        AND p.total = ?
-                        AND p.estado != 'cancelado'
-                        AND EXISTS (
-                            SELECT 1 FROM detalle_pedido dp
-                            WHERE dp.id_pedido = p.id_pedido
-                            GROUP BY dp.id_pedido
-                            HAVING COUNT(*) = ?
-                        )
-                    """, (id_cliente, total, len(productos_cotizacion)))
+                        AND ABS(p.total - ?) < 0.01
+                        AND p.estado NOT IN ('cancelado')
+                        ORDER BY p.fecha_pedido DESC
+                    """, (id_cliente, total))
                     
-                    pedido_existente = cur.fetchone()
+                    pedidos_similares = cur.fetchall()
                     
-                    if pedido_existente:
-                        # Ya existe un pedido similar, verificar si es exactamente el mismo
-                        id_pedido_existe = pedido_existente[0]
+                    # Verificar si algún pedido tiene exactamente los mismos productos
+                    pedido_duplicado = False
+                    for pedido_row in pedidos_similares:
+                        id_pedido_similar = pedido_row[0]
                         
+                        # Obtener productos de este pedido
                         cur.execute("""
-                            SELECT id_producto, cantidad
+                            SELECT id_producto, cantidad, precio_unitario
                             FROM detalle_pedido
                             WHERE id_pedido = ?
                             ORDER BY id_producto
-                        """, (id_pedido_existe,))
+                        """, (id_pedido_similar,))
                         
                         productos_pedido = cur.fetchall()
                         
-                        # Comparar productos
-                        if productos_cotizacion == productos_pedido:
-                            cur.close()
-                            conn.close()
-                            return {
-                                'success': False, 
-                                'error': 'Ya existe un pedido idéntico para esta cotización'
-                            }
+                        # Comparar si son exactamente iguales
+                        if len(productos_cotizacion) == len(productos_pedido):
+                            productos_iguales = True
+                            for i, prod_cot in enumerate(productos_cotizacion):
+                                prod_ped = productos_pedido[i]
+                                # Comparar id_producto, cantidad
+                                if (prod_cot[0] != prod_ped[0] or 
+                                    prod_cot[1] != prod_ped[1]):
+                                    productos_iguales = False
+                                    break
+                            
+                            if productos_iguales:
+                                pedido_duplicado = True
+                                break
+                    
+                    if pedido_duplicado:
+                        cur.close()
+                        conn.close()
+                        return {
+                            'success': False, 
+                            'error': 'Ya existe un pedido idéntico para esta cotización'
+                        }
                     
                     # No existe pedido duplicado, crear uno nuevo
-                    # Obtener detalles completos de la cotización
                     cur.execute("""
                         SELECT id_material, cantidad, costo_unitario, subtotal
                         FROM detalle_cotizacion
@@ -288,9 +302,9 @@ class QuotationManager:
                     
                     # Insertar detalles del pedido
                     for detalle in detalles:
-                        id_combinacion = detalle[0]  # id_material es realmente id_combinacion
+                        id_combinacion = detalle[0]
                         cantidad = int(detalle[1])
-                        precio_unitario = detalle[2]  # costo_unitario
+                        precio_unitario = detalle[2]
                         subtotal = detalle[3]
                         
                         cur.execute("""

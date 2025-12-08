@@ -168,7 +168,8 @@
             <div class="filtros-rapidos">
                 <button class="btn-filtro active" onclick="filtrarEstado('todos')">Todos ({{ todos|length }})</button>
                 <button class="btn-filtro" onclick="filtrarEstado('pendiente')">Pendientes</button>
-                <button class="btn-filtro" onclick="filtrarEstado('en_produccion')">En Producción</button>
+                <button class="btn-filtro" onclick="filtrarEstado('en_proceso')">En Proceso</button>
+                <button class="btn-filtro" onclick="filtrarEstado('finalizado')">Finalizados</button>
                 <button class="btn-filtro" onclick="filtrarEstado('entregado')">Entregados</button>
                 <button class="btn-filtro" onclick="filtrarEstado('cancelado')">Cancelados</button>
             </div>
@@ -185,7 +186,7 @@
                         <th>Fecha Entrega</th>
                         <th>Estado</th>
                         <th>Total</th>
-                        <th>Acciones</th>
+                        <!-- ELIMINAMOS LA COLUMNA DE ACCIONES -->
                     </tr>
                 </thead>
                 <tbody id="tabla-body">
@@ -202,12 +203,7 @@
                             </span>
                         </td>
                         <td class="monto">${{ "%.2f"|format(p[6]) }}</td>
-                        <td>
-                            <a href="/editar_pedido/{{ p[0] }}" class="btn-mini">✏️</a>
-                            <a href="/eliminar_pedido/{{ p[0] }}" 
-                               class="btn-mini btn-danger"
-                               onclick="return confirm('¿Eliminar pedido #{{ p[0] }}?')">🗑️</a>
-                        </td>
+                        <!-- ELIMINAMOS LA COLUMNA TD DE ACCIONES -->
                     </tr>
                     {% endfor %}
                 </tbody>
